@@ -19,5 +19,9 @@ management:
 
 yowyob:
   search:
-    # Clés d'API acceptées (une par projet intégrateur). Vide = auth désactivée (DEV uniquement).
-    api-keys: ${SEARCH_API_KEYS:}
+    auth:
+      # Auth déléguée au kernel : chaque appel présente X-Client-Id + X-Api-Key d'un clientApplication
+      # du kernel, validé via GET /api/client-applications/me. Aucun secret statique, aucun rechargement.
+      enabled: ${SEARCH_AUTH_ENABLED:true}
+      kernel-base-url: ${KERNEL_BASE_URL:http://kernel-core-kernel-layer-1:8080}
+      cache-ttl-seconds: ${SEARCH_AUTH_CACHE_TTL:300}

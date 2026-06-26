@@ -10,7 +10,8 @@ services:
     environment:
       SERVER_PORT: "8080"
       ELASTICSEARCH_URIS: http://search-elasticsearch:9200
-      # SEARCH_API_KEYS (clés acceptées, séparées par des virgules) vient du .env serveur.
+      # Auth déléguée au kernel : valide X-Client-Id + X-Api-Key via le kernel. Aucune clé statique.
+      KERNEL_BASE_URL: ${KERNEL_BASE_URL:-http://kernel-core-kernel-layer-1:8080}
     depends_on:
       search-elasticsearch:
         condition: service_healthy
