@@ -1,0 +1,23 @@
+spring:
+  application:
+    name: yowyob-search
+  elasticsearch:
+    uris: ${ELASTICSEARCH_URIS:http://localhost:9200}
+
+server:
+  port: ${SERVER_PORT:8080}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      probes:
+        enabled: true
+
+yowyob:
+  search:
+    # Clés d'API acceptées (une par projet intégrateur). Vide = auth désactivée (DEV uniquement).
+    api-keys: ${SEARCH_API_KEYS:}

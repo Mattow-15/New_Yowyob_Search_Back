@@ -1,0 +1,65 @@
+# yowyob-search — service de recherche autonome (PRODUCTION, serveur yowyob).
+# Tout projet l'appelle en HTTP : ingestion (PUT/POST /api/index/...) + recherche (GET /api/search).
+# ES DÉDIÉ au service (volume durable). Exposé via Traefik sur search.yowyob.com.
+services:
+  yowyob-search:
+    image: "${SEARCH_IMAGE:?SEARCH_IMAGE requis - ex ghcr.io/yowyob/yowyob-search:sha-xxxx}"
+    pull_policy: always
+    restart: unless-stopped
+    env_file: [.env]
+    environment:
+      SERVER_PORT: "8080"
+      ELASTICSEARCH_URIS: http://search-elasticsearch:9200
+      # SEARCH_API_KEYS (clés acceptées, séparées par des virgules) vient du .env serveur.
+    depends_on:
+      search-elasticsearch:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8080/actuator/health/readiness >/dev/null || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.yowyob-search.rule=Host(`search.yowyob.com`)"
+      - "traefik.http.routers.yowyob-search.entrypoints=websecure"
+      - "traefik.http.routers.yowyob-search.tls=true"
+      - "traefik.http.routers.yowyob-search.tls.certresolver=letsencrypt"
+      - "traefik.http.services.yowyob-search.loadbalancer.server.port=8080"
+      - "traefik.docker.network=yowyob"
+    networks:
+      - search-net
+      - yowyob
+
+  search-elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.15.3
+    pull_policy: if_not_present
+    restart: unless-stopped
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - cluster.name=yowyob-search
+      - ES_JAVA_OPTS=-Xms512m -Xmx1g
+    volumes:
+      - search-es-data:/usr/share/elasticsearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:9200/_cluster/health?wait_for_status=yellow >/dev/null"]
+      interval: 20s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
+    networks:
+      - search-net
+
+volumes:
+  search-es-data:
+
+networks:
+  # Réseau privé service <-> son ES dédié.
+  search-net:
+    name: yowyob-search-net
+  # Réseau partagé du serveur (Traefik + accès interne par les autres projets).
+  yowyob:
+    external: true
+    name: yowyob
