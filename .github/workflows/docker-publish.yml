@@ -6,6 +6,11 @@ on:
       - main
     tags:
       - "v*"
+    paths-ignore:
+      - "**.md"
+      - "docs/**"
+      - ".gitignore"
+      - ".env.example"
   workflow_dispatch:
 
 permissions:
