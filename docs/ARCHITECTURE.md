@@ -27,6 +27,9 @@ le kernel.
   `yowyob-search-net`. Le service est aussi sur le réseau partagé `yowyob` (Traefik + accès aux
   autres conteneurs, **dont le kernel**).
 - **Exposition** : Traefik `https://search.yowyob.com` (Let's Encrypt).
+- **OpenAPI/Swagger** : springdoc (`OpenApiConfig`). UI sur `/swagger-ui.html`, spec sur
+  `/v3/api-docs` — **hors `/api/**`**, donc ouverts (le filtre d'auth n'intercepte que `/api/**`).
+  Le bouton *Authorize* propose les 3 en-têtes (`X-Client-Id`/`X-Api-Key`/`X-Tenant-Id`).
 
 ---
 

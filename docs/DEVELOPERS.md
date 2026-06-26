@@ -4,6 +4,7 @@ Comment intégrer le service de recherche **yowyob-search** dans votre projet.
 Service autonome, multi-tenant, accessible par HTTP depuis n'importe quel langage.
 
 - **Base URL (prod)** : `https://search.yowyob.com`
+- **Swagger UI** : `https://search.yowyob.com/swagger-ui.html` — **spec OpenAPI** : `/v3/api-docs` (ouverts, sans clé)
 - **Santé** : `GET /actuator/health` (ouvert, sans clé)
 
 ---
@@ -50,7 +51,25 @@ X-Client-Id: <id du clientApplication kernel>
 X-Api-Key:   <secret du clientApplication>
 X-Tenant-Id: <votre tenant>
 ```
-`/actuator/**` reste ouvert (pas d'auth).
+`/actuator/**`, `/swagger-ui.html` et `/v3/api-docs` restent ouverts (pas d'auth).
+
+### Le `X-Tenant-Id` : lequel, et où le prendre ?
+
+**yowyob-search n'attribue aucun tenant.** Pour lui, `X-Tenant-Id` est une **clé de cloisonnement
+opaque** : il stocke et filtre dessus sans la valider. La seule règle qui compte :
+
+> **La valeur du tenant doit être identique à l'indexation et à la recherche.** Sinon vous
+> n'« voyez » pas vos propres documents.
+
+Concrètement, **le tenant = le `tenantId` du kernel** (l'UUID du tenant propriétaire de la donnée).
+Où l'obtenir selon le cas :
+- **Données poussées par le kernel** (entités kernel déjà indexées) : le kernel utilise le `tenantId`
+  de chaque entité. Pour les retrouver, envoyez **ce même `tenantId` du kernel**. Votre backend
+  l'obtient via l'introspection du kernel : `GET /api/client-applications/me` (ou le `/me`
+  utilisateur) renvoie le `tenantId` du contexte courant — utilisez-le tel quel.
+- **Vos propres données** (vous indexez vous-même, projet hors kernel) : choisissez votre propre
+  identifiant de tenant (l'UUID de l'organisation/du client chez vous) et **réutilisez exactement le
+  même** à la recherche. Un seul tenant pour tout votre produit ? Une constante suffit.
 
 ---
 
