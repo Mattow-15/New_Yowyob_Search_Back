@@ -6,6 +6,7 @@ import org.springframework.data.annotation.Id;
 import org.springframework.data.elasticsearch.annotations.Document;
 import org.springframework.data.elasticsearch.annotations.Field;
 import org.springframework.data.elasticsearch.annotations.FieldType;
+import org.springframework.data.elasticsearch.annotations.Setting;
 
 /**
  * Document générique indexé par le service. N'importe quel projet pousse un objet JSON arbitraire
@@ -16,15 +17,21 @@ import org.springframework.data.elasticsearch.annotations.FieldType;
  * inter-tenant/collection. {@code content} = aplatissement texte de la source (full-text).
  * {@code source} = objet brut renvoyé tel quel dans les résultats (non indexé pour éviter
  * l'explosion de mapping entre collections hétérogènes).
+ *
+ * <p>{@code title}/{@code content} sont indexés avec un analyzer <b>edge-ngram</b> (préfixes, 2→20)
+ * et interrogés avec l'analyzer {@code standard} : une saisie partielle ({@code "gmail"} dans
+ * {@code "x@gmail.com"}, {@code "arab"} dans {@code "Arabica"}) matche, façon « search as you type ».
+ * L'analyzer ne pouvant pas changer sur un index existant, l'index est versionné ({@code -v2}).
  */
-@Document(indexName = "yowyob-search-v1", createIndex = true)
+@Document(indexName = "yowyob-search-v2", createIndex = true)
+@Setting(settingPath = "elasticsearch/settings.json")
 public record SearchDoc(
         @Id String id,
         @Field(type = FieldType.Keyword) String tenantId,
         @Field(type = FieldType.Keyword) String collection,
         @Field(type = FieldType.Keyword) String externalId,
-        @Field(type = FieldType.Text) String title,
-        @Field(type = FieldType.Text) String content,
+        @Field(type = FieldType.Text, analyzer = "edge_ngram_analyzer", searchAnalyzer = "standard") String title,
+        @Field(type = FieldType.Text, analyzer = "edge_ngram_analyzer", searchAnalyzer = "standard") String content,
         @Field(type = FieldType.Object, enabled = false) Map<String, Object> source,
         @Field(type = FieldType.Date, format = {}, pattern = "uuuu-MM-dd'T'HH:mm:ss.SSSXXX") Instant indexedAt) {
 

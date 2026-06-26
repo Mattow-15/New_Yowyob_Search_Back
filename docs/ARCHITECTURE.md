@@ -93,7 +93,7 @@ entités métier vers yowyob-search. C'est **un intégrateur comme un autre**, q
 
 | Couche | Classe | Rôle |
 |---|---|---|
-| Domaine | `domain/SearchDoc.java` | Document ES (`@Document index=yowyob-search-v1`). `id = tenantId:collection:externalId`. Champs : tenantId, collection, externalId, **title**, **content** (full-text), **source** (objet brut, `enabled=false` = stocké non indexé), indexedAt. |
+| Domaine | `domain/SearchDoc.java` | Document ES (`@Document index=yowyob-search-v2`). `id = tenantId:collection:externalId`. Champs : tenantId, collection, externalId, **title**, **content** (full-text **edge-ngram**, cf §8), **source** (objet brut, `enabled=false` = stocké non indexé), indexedAt. Settings analyzer dans `resources/elasticsearch/settings.json` (`@Setting`). |
 | Repo | `repository/SearchDocRepository.java` | `ReactiveElasticsearchRepository`. |
 | Mapping | `service/DocumentMapper.java` | Transforme l'objet JSON entrant en `SearchDoc` : extrait le `title` (name/title/label/code/sku/email…), aplatit récursivement tous les champs en `content`. |
 | Indexation | `service/IndexService.java` | `index` / `indexBulk` / `delete`. |
@@ -151,7 +151,7 @@ curl -s "https://search.yowyob.com/api/search?q=x" \
 
 # combien de docs au total (depuis le serveur, sur l'ES dédié) :
 docker exec yowyob-search-search-elasticsearch-1 \
-  curl -s "http://localhost:9200/yowyob-search-v1/_count"
+  curl -s "http://localhost:9200/yowyob-search-v2/_count"
 
 # si 401 inattendu : vérifier que le conteneur joint le kernel
 docker exec yowyob-search-yowyob-search-1 \
@@ -168,10 +168,18 @@ docker exec yowyob-search-yowyob-search-1 \
 
 ## 8. Limites connues & pistes d'extension
 
-- **Tokenisation / pertinence** : l'analyzer ES par défaut découpe certains champs de façon non
-  intuitive (ex. une recherche `gmail` ne retrouve pas un email `x@gmail.com`). Pour des recherches
-  partielles (sous-chaînes, emails, n-grams), définir un **mapping/analyzer custom** sur `title`/
-  `content` (edge-ngram ou `search_as_you_type`). Point d'extension principal côté pertinence.
+- **Tokenisation / pertinence** : `title`/`content` utilisent un analyzer **edge-ngram** (préfixes
+  2→20, `resources/elasticsearch/settings.json`) à l'indexation et `standard` à la recherche → la
+  saisie partielle matche (`gmail` dans `x@gmail.com`, `arab` dans `Arabica`), façon « search as you
+  type ». **Limite restante** : c'est du **préfixe**, pas de la sous-chaîne au milieu d'un mot
+  (`mail` ne retrouve pas `gmail`). Pour du vrai infixe : passer le filtre `edge_ngram` en `ngram`
+  (coût d'index supérieur) — bumper alors l'index en `-v3` + `_reindex` (cf. ci-dessous). Le
+  `min_gram=2` implique que les requêtes d'1 seul caractère ne matchent pas par ngram.
+- **Migration d'index (analyzer)** : l'analyzer d'un champ ne peut pas changer sur un index existant.
+  Procédure : bumper `indexName` dans `SearchDoc` (`-vN`), déployer (Spring crée le nouvel index avec
+  les settings), puis migrer les données : `POST /_reindex {"source":{"index":"...vN-1"},"dest":{"index":"...vN"}}`
+  sur l'ES dédié (le `_source` est copié et **ré-analysé** avec le nouveau mapping). Supprimer
+  l'ancien index ensuite.
 - **Cache d'auth** : `ConcurrentHashMap` simple (cf. §2). Passer à Caffeine si beaucoup de clés.
 - **Ingestion** : push HTTP uniquement. Un connecteur Kafka d'auto-ingestion reste envisageable.
 - **Réindexation full** : pas de job de backfill intégré ; les intégrateurs rejouent via `_bulk`.
