@@ -25,21 +25,32 @@ Il existe **deux** recherches sur la plateforme. Choisissez selon votre projet :
 
 ---
 
-## 2. Prérequis
+## 2. Prérequis — authentification (déléguée au kernel)
 
-Demandez à l'équipe plateforme :
-- une **clé d'API** (`X-Api-Key`) propre à votre projet ;
-- l'identifiant **tenant** (`X-Tenant-Id`) de vos données (souvent l'organisation/le client).
+yowyob-search **ne gère pas ses propres clés**. Il s'appuie sur les **clientApplications du
+kernel** : à chaque appel, il valide vos identifiants en interrogeant le kernel
+(`GET /api/client-applications/me`). Conséquence : **un clientApplication créé dans le kernel
+fonctionne immédiatement ici, sans aucune configuration ni redémarrage de yowyob-search.**
 
-> 🔒 **Ces appels se font côté SERVEUR uniquement.** Ne mettez jamais la clé d'API dans le
-> navigateur / une app mobile / un bundle front. Votre backend appelle yowyob-search ; votre front
-> appelle votre backend.
+Demandez donc à l'équipe plateforme **un clientApplication kernel** (ou réutilisez celui de votre
+projet). Vous obtenez deux valeurs :
+- `X-Client-Id` : l'identifiant du clientApplication (ex. `accounting-backend`) ;
+- `X-Api-Key` : son secret.
 
-Tous les endpoints `/api/**` exigent les deux en-têtes :
+Plus l'identifiant **tenant** de vos données :
+- `X-Tenant-Id` : le tenant (souvent l'organisation/le client).
+
+> 🔒 **Ces appels se font côté SERVEUR uniquement.** Ne mettez jamais `X-Client-Id`/`X-Api-Key`
+> dans le navigateur / une app mobile / un bundle front. Votre backend appelle yowyob-search ;
+> votre front appelle votre backend. (C'est la même règle que pour appeler le kernel.)
+
+Tous les endpoints `/api/**` exigent les trois en-têtes :
 ```
-X-Api-Key: <votre clé>
+X-Client-Id: <id du clientApplication kernel>
+X-Api-Key:   <secret du clientApplication>
 X-Tenant-Id: <votre tenant>
 ```
+`/actuator/**` reste ouvert (pas d'auth).
 
 ---
 
@@ -61,7 +72,7 @@ X-Tenant-Id: <votre tenant>
 `PUT /api/index/{collection}/{id}` — crée ou remplace.
 ```bash
 curl -X PUT https://search.yowyob.com/api/index/products/p-42 \
-  -H "X-Api-Key: $KEY" -H "X-Tenant-Id: $TENANT" \
+  -H "X-Client-Id: $CLIENT_ID" -H "X-Api-Key: $KEY" -H "X-Tenant-Id: $TENANT" \
   -H "Content-Type: application/json" \
   -d '{"name":"Café Arabica","sku":"CAF-001","price":1500,"tags":["bio","local"]}'
 # → 200 {"ref":"<tenant>:products:p-42","indexed":1}
@@ -71,7 +82,8 @@ curl -X PUT https://search.yowyob.com/api/index/products/p-42 \
 `POST /api/index/{collection}/_bulk` — chaque élément **doit** porter un champ `id`.
 ```bash
 curl -X POST https://search.yowyob.com/api/index/products/_bulk \
-  -H "X-Api-Key: $KEY" -H "X-Tenant-Id: $TENANT" -H "Content-Type: application/json" \
+  -H "X-Client-Id: $CLIENT_ID" -H "X-Api-Key: $KEY" -H "X-Tenant-Id: $TENANT" \
+  -H "Content-Type: application/json" \
   -d '[{"id":"p-1","name":"Article A"},{"id":"p-2","name":"Article B"}]'
 # → 200 {"ref":"products","indexed":2}
 ```
@@ -80,7 +92,7 @@ curl -X POST https://search.yowyob.com/api/index/products/_bulk \
 `DELETE /api/index/{collection}/{id}`
 ```bash
 curl -X DELETE https://search.yowyob.com/api/index/products/p-42 \
-  -H "X-Api-Key: $KEY" -H "X-Tenant-Id: $TENANT"
+  -H "X-Client-Id: $CLIENT_ID" -H "X-Api-Key: $KEY" -H "X-Tenant-Id: $TENANT"
 # → 204
 ```
 
@@ -91,7 +103,7 @@ curl -X DELETE https://search.yowyob.com/api/index/products/p-42 \
 `GET /api/search?q=<texte>&collection=<optionnel>&page=0&size=20`
 ```bash
 curl "https://search.yowyob.com/api/search?q=arabica&collection=products" \
-  -H "X-Api-Key: $KEY" -H "X-Tenant-Id: $TENANT"
+  -H "X-Client-Id: $CLIENT_ID" -H "X-Api-Key: $KEY" -H "X-Tenant-Id: $TENANT"
 ```
 ```json
 {
@@ -115,7 +127,8 @@ curl "https://search.yowyob.com/api/search?q=arabica&collection=products" \
 ```ts
 const BASE = "https://search.yowyob.com";
 const headers = {
-  "X-Api-Key": process.env.SEARCH_API_KEY!,
+  "X-Client-Id": process.env.SEARCH_CLIENT_ID!,   // clientApplication kernel
+  "X-Api-Key": process.env.SEARCH_API_KEY!,        // son secret
   "X-Tenant-Id": tenantId,
   "Content-Type": "application/json",
 };
@@ -137,7 +150,11 @@ const { results } = await r.json();
 ```python
 import os, requests
 BASE = "https://search.yowyob.com"
-H = {"X-Api-Key": os.environ["SEARCH_API_KEY"], "X-Tenant-Id": tenant_id}
+H = {
+    "X-Client-Id": os.environ["SEARCH_CLIENT_ID"],  # clientApplication kernel
+    "X-Api-Key": os.environ["SEARCH_API_KEY"],       # son secret
+    "X-Tenant-Id": tenant_id,
+}
 
 requests.put(f"{BASE}/api/index/clients/{c['id']}", headers=H, json=c)          # upsert
 requests.delete(f"{BASE}/api/index/clients/{client_id}", headers=H)             # delete
@@ -159,7 +176,9 @@ results = r.json()["results"]
 4. **Une `collection` par type d'entité** : facilite le filtrage et l'affichage.
 5. **Tolérance aux pannes** : l'indexation est annexe. Si un appel échoue, journalisez et
    continuez (ou rejouez en tâche de fond) — ne bloquez pas votre opération métier dessus.
-6. **Sécurité** : clé d'API et appels **server-side only**. Le navigateur ne parle qu'à votre backend.
+6. **Sécurité** : `X-Client-Id`/`X-Api-Key` et appels **server-side only**. Le navigateur ne parle
+   qu'à votre backend. Réutilisez le clientApplication kernel de votre projet : pas besoin d'en
+   créer un dédié à la recherche.
 
 ---
 
@@ -170,7 +189,7 @@ results = r.json()["results"]
 | 200 | OK (index / recherche) |
 | 204 | Supprimé |
 | 400 | Requête invalide (en-tête `X-Tenant-Id` manquant, `q` absent, lot sans `id`…) |
-| 401 | `X-Api-Key` absente ou invalide |
+| 401 | `X-Client-Id`/`X-Api-Key` absents ou rejetés par le kernel |
 
 ---
 
@@ -178,4 +197,5 @@ results = r.json()["results"]
 
 - Ingestion **par push HTTP** uniquement (un connecteur Kafka d'auto-ingestion est envisagé).
 - Recherche full-text + filtre par `collection` ; le scoring/“fuzzy”/facettes avancées viendront.
-- Pas encore d'API d'administration des clés (gérées dans le `.env` serveur pour l'instant).
+- **Auth déléguée au kernel** : plus de clés à gérer côté yowyob-search (cf. `ARCHITECTURE.md` pour
+  les mainteneurs). L'auth dépend donc de la joignabilité du kernel (validation `/me`, mise en cache).
