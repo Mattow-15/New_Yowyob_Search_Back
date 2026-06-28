@@ -5,7 +5,9 @@ name: Deploy (server)
 
 on:
   workflow_run:
-    workflows: ["Publish Docker image (GHCR)"]
+    # Déclenché après la publication de l'image de recherche OU de l'image embeddings
+    # (cette dernière est longue à builder : un 2e passage de deploy la prendra en compte).
+    workflows: ["Publish Docker image (GHCR)", "Publish Embeddings image (GHCR)"]
     types: [completed]
     branches: [main]
   workflow_dispatch:
@@ -53,9 +55,13 @@ jobs:
             set -e
             cd '${{ vars.SEARCH_DIR }}'
             export SEARCH_IMAGE='${SEARCH_IMAGE}'
-            # EMBEDDINGS_IMAGE laissé au défaut (:latest) du compose ; publié par son propre workflow.
-            docker compose -f docker-compose.prod.yml pull yowyob-search yowyob-embeddings
-            docker compose -f docker-compose.prod.yml up -d
+            # Cœur (ES + recherche) : requis, doit toujours monter.
+            docker compose -f docker-compose.prod.yml pull yowyob-search
+            docker compose -f docker-compose.prod.yml up -d search-elasticsearch yowyob-search
+            # Embeddings (image longue à builder) : best-effort, monte dès qu'elle est publiée.
+            docker compose -f docker-compose.prod.yml pull yowyob-embeddings && \
+              docker compose -f docker-compose.prod.yml up -d yowyob-embeddings || \
+              echo 'Image embeddings pas encore disponible : la recherche tourne en lexical en attendant.'
             docker compose -f docker-compose.prod.yml ps
             docker image prune -f
           "
