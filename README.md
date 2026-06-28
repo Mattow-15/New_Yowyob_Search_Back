@@ -78,6 +78,17 @@ expose `latitude`/`longitude`. Services géo utilitaires : `GET /api/geo/geocode
 
 Réglages via env : `SEARCH_GEO_ENABLED`, `NOMINATIM_URL`, `IPAPI_URL`, `GEO_DEFAULT_RADIUS_KM`…
 
+## Crawler OpenStreetMap (optionnel)
+Le service peut **se peupler tout seul** de points d'intérêt (commerces, services) depuis
+OpenStreetMap via l'API Overpass. **Désactivé par défaut** ; module isolé dans le package `crawler/`
+qui indexe **directement** (pas de saut HTTP) sous un tenant/collection configurés.
+
+- Déclenchement manuel : `POST /api/crawler/run` (auth kernel requise).
+- Crawl planifié : `CRAWLER_SCHEDULE_CRON` (ex. `0 0 3 * * *`) ; `-` = désactivé.
+- Activation : `CRAWLER_ENABLED=true` + `CRAWLER_TENANT_ID=<tenant>` (requis). Villes/types via
+  `crawler.cities` (défaut Douala/Yaoundé) et `CRAWLER_OSM_TYPES`.
+- Les documents crawlés portent `latitude`/`longitude` → directement cherchables en proximité.
+
 ## Intégration type
 Le **backend** de chaque projet (jamais le navigateur) :
 1. à chaque création/màj d'une entité → `PUT /api/index/{collection}/{id}` ;

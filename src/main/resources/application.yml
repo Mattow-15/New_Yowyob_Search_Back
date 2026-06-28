@@ -45,3 +45,18 @@ yowyob:
       default-lat: ${GEO_DEFAULT_LAT:4.0511}
       default-lon: ${GEO_DEFAULT_LON:9.7679}
       default-radius-km: ${GEO_DEFAULT_RADIUS_KM:10.0}
+
+# Crawler OpenStreetMap (optionnel, désactivé par défaut). S'il est activé, il indexe directement
+# (sans saut HTTP) des points d'intérêt sous le tenant/collection configurés. crawler.tenant-id est
+# REQUIS quand enabled=true. schedule-cron="-" = pas de crawl automatique (manuel via /api/crawler/run).
+crawler:
+  enabled: ${CRAWLER_ENABLED:false}
+  overpass-url: ${OVERPASS_URL:https://overpass-api.de/api/interpreter}
+  user-agent: ${CRAWLER_USER_AGENT:yowyob-crawler/1.0}
+  schedule-cron: ${CRAWLER_SCHEDULE_CRON:-}
+  tenant-id: ${CRAWLER_TENANT_ID:}
+  collection: ${CRAWLER_COLLECTION:places}
+  osm-types: ${CRAWLER_OSM_TYPES:restaurant,pharmacy,bank,fuel,hospital,hotel}
+  cities:
+    - { name: Douala, lat: 4.0511, lng: 9.7679, radiusMeters: 8000 }
+    - { name: Yaoundé, lat: 3.8480, lng: 11.5021, radiusMeters: 8000 }
