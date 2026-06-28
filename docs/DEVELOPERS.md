@@ -129,14 +129,61 @@ curl "https://search.yowyob.com/api/search?q=arabica&collection=products" \
   "count": 1,
   "results": [
     { "collection": "products", "id": "p-42", "title": "Café Arabica",
+      "latitude": null, "longitude": null,
       "source": { "name": "Café Arabica", "sku": "CAF-001", "price": 1500, "tags": ["bio","local"] } }
   ]
 }
 ```
-- `q` : obligatoire (recherche sur `title` + tous les champs via `content`).
+- `q` : obligatoire. La recherche est **hybride** : lexicale (saisie partielle, edge-ngram sur
+  `title`+`content`) **et sémantique** (par le sens, via un vecteur — `pc` peut remonter `ordinateur`).
 - `collection` : optionnel (omis = tous les types du tenant).
 - `page` / `size` : pagination (`size` max 100, défaut 20).
+- **Proximité** (optionnelle) : `lat`+`lon`+`radiusKm` (rayon km), ou `city=Douala` (géocodée), ou
+  une formulation naturelle (`q=restaurant près de moi` → géoloc de l'IP appelante). Les résultats
+  sont alors filtrés au rayon et **triés par distance** ; `latitude`/`longitude` sont renseignés
+  quand le document indexé portait des coordonnées (`latitude`/`longitude` ou `lat`/`lon`/`lng`).
 - Résultats **toujours** limités à votre `X-Tenant-Id`.
+
+---
+
+## 5 bis. Exemple bout-en-bout (onboarding d'un nouveau service)
+
+Scénario complet : un nouveau service `boutique-backend` veut rendre ses produits cherchables.
+
+```bash
+# 0) Identifiants — un clientApplication kernel (créé dans le kernel, marche aussitôt ici)
+export BASE="https://search.yowyob.com"
+export CLIENT_ID="boutique-backend"                     # X-Client-Id
+export KEY="<secret du clientApplication>"              # X-Api-Key
+export TENANT="11111111-1111-1111-1111-111111111111"   # tenantId du kernel
+AUTH=(-H "X-Client-Id: $CLIENT_ID" -H "X-Api-Key: $KEY" -H "X-Tenant-Id: $TENANT")
+
+# 1) Indexation initiale en lot (avec coordonnées => cherchable en proximité)
+curl -X POST "$BASE/api/index/products/_bulk" "${AUTH[@]}" \
+  -H "Content-Type: application/json" -d '[
+    {"id":"p-1","name":"Ordinateur portable Dell","price":350000,"city":"Douala","latitude":4.05,"longitude":9.70},
+    {"id":"p-2","name":"Téléphone Samsung Galaxy","price":120000,"city":"Yaoundé","latitude":3.87,"longitude":11.52}
+  ]'
+# → {"ref":"products","indexed":2}
+
+# 2) Recherche lexicale (saisie partielle : "ordi" matche "Ordinateur")
+curl "$BASE/api/search?q=ordi&collection=products" "${AUTH[@]}"
+
+# 3) Recherche sémantique (par le SENS : "pc portable" remonte l'ordinateur, sans mot commun)
+curl "$BASE/api/search?q=pc%20portable&collection=products" "${AUTH[@]}"
+
+# 4) Recherche de proximité (autour d'un point, 10 km, trié par distance)
+curl "$BASE/api/search?q=ordinateur&lat=4.05&lon=9.70&radiusKm=10" "${AUTH[@]}"
+
+# 5) Mise à jour d'un produit (même id => upsert) puis suppression
+curl -X PUT "$BASE/api/index/products/p-1" "${AUTH[@]}" \
+  -H "Content-Type: application/json" -d '{"name":"Ordinateur portable Dell XPS","price":420000}'
+curl -X DELETE "$BASE/api/index/products/p-2" "${AUTH[@]}"
+```
+
+**Aucune configuration côté yowyob-search** n'est nécessaire pour ce nouveau service : il suffit que
+son clientApplication existe dans le kernel. Le sémantique et la proximité s'activent **tout seuls**
+dès l'indexation (texte → vecteur ; `latitude`/`longitude` → point géo).
 
 ---
 
@@ -212,9 +259,14 @@ results = r.json()["results"]
 
 ---
 
-## 9. Limites actuelles / à venir
+## 9. Capacités & limites
 
-- Ingestion **par push HTTP** uniquement (un connecteur Kafka d'auto-ingestion est envisagé).
-- Recherche full-text + filtre par `collection` ; le scoring/“fuzzy”/facettes avancées viendront.
+- Recherche **hybride** : lexicale (edge-ngram, saisie partielle) **+ sémantique** (vecteurs).
+- **Proximité géo** : `lat`/`lon`/`radiusKm`, `city`, ou « près de moi » (géoloc IP) — filtre + tri
+  par distance, dès qu'un document porte des coordonnées.
+- Ingestion **par push HTTP** (un crawler OpenStreetMap optionnel peut aussi pré-remplir le service).
+- La recherche sémantique s'appuie sur un micro-service d'embeddings : s'il est indisponible, le
+  service **dégrade automatiquement** vers le lexical (aucune coupure).
 - **Auth déléguée au kernel** : plus de clés à gérer côté yowyob-search (cf. `ARCHITECTURE.md` pour
   les mainteneurs). L'auth dépend donc de la joignabilité du kernel (validation `/me`, mise en cache).
+- À venir : facettes/agrégations, connecteur Kafka d'auto-ingestion.
