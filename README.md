@@ -60,9 +60,23 @@ sémantique** : chaque document est vectorisé par le micro-service [`yowyob-emb
 - Réglages via env : `SEARCH_EMBEDDING_ENABLED`, `EMBEDDING_SERVICE_URL`, `SEARCH_EMBEDDING_K`,
   `SEARCH_EMBEDDING_NUM_CANDIDATES`, `SEARCH_EMBEDDING_BOOST`.
 
-> ⚠️ L'index passe de `-v2` à `-v3` (ajout du champ vectoriel). Au déploiement, un index neuf est
-> créé : les données existantes doivent être **ré-poussées** par les clients pour bénéficier du
-> sémantique (le lexical, lui, fonctionne dès le premier push).
+> ⚠️ L'index passe de `-v2` à `-v3` (ajout des champs vectoriel + géo). Au déploiement, un index
+> neuf est créé : les données existantes doivent être **ré-poussées** par les clients pour bénéficier
+> du sémantique et de la géo (le lexical, lui, fonctionne dès le premier push).
+
+## Recherche de proximité (géo)
+Si un document indexé porte des coordonnées (`latitude`/`longitude`, ou `lat`/`lon`/`lng`), il
+devient cherchable **par proximité**. Trois façons de déclencher la géo sur `GET /api/search` :
+- **coordonnées explicites** : `&lat=4.05&lon=9.73&radiusKm=5` ;
+- **ville** : `&city=Douala` (géocodée via un gazetteer Cameroun intégré, repli Nominatim/OSM) ;
+- **langage naturel** : `q=restaurant près de moi` → géoloc de l'IP appelante (rayon déduit de
+  l'expression : « près » 5 km, « proximité » 7 km, « loin » 20 km…).
+
+Les résultats sont alors **filtrés au rayon** et **triés par distance croissante** ; chaque hit
+expose `latitude`/`longitude`. Services géo utilitaires : `GET /api/geo/geocode?address=`,
+`GET /api/geo/distance?lat1=&lon1=&lat2=&lon2=`, `GET /api/geo/ip-location`.
+
+Réglages via env : `SEARCH_GEO_ENABLED`, `NOMINATIM_URL`, `IPAPI_URL`, `GEO_DEFAULT_RADIUS_KM`…
 
 ## Intégration type
 Le **backend** de chaque projet (jamais le navigateur) :

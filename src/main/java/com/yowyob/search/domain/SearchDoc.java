@@ -6,7 +6,9 @@ import org.springframework.data.annotation.Id;
 import org.springframework.data.elasticsearch.annotations.Document;
 import org.springframework.data.elasticsearch.annotations.Field;
 import org.springframework.data.elasticsearch.annotations.FieldType;
+import org.springframework.data.elasticsearch.annotations.GeoPointField;
 import org.springframework.data.elasticsearch.annotations.Setting;
+import org.springframework.data.elasticsearch.core.geo.GeoPoint;
 
 /**
  * Document générique indexé par le service. N'importe quel projet pousse un objet JSON arbitraire
@@ -41,6 +43,7 @@ public record SearchDoc(
         @Field(type = FieldType.Text, analyzer = "edge_ngram_analyzer", searchAnalyzer = "standard") String content,
         @Field(type = FieldType.Object, enabled = false) Map<String, Object> source,
         @Field(type = FieldType.Dense_Vector, dims = 384, index = true, similarity = "cosine") float[] textVector,
+        @GeoPointField GeoPoint location,
         @Field(type = FieldType.Date, format = {}, pattern = "uuuu-MM-dd'T'HH:mm:ss.SSSXXX") Instant indexedAt) {
 
     public static String documentId(String tenantId, String collection, String externalId) {
@@ -49,6 +52,6 @@ public record SearchDoc(
 
     /** Copie du document avec son vecteur sémantique renseigné. */
     public SearchDoc withTextVector(float[] vector) {
-        return new SearchDoc(id, tenantId, collection, externalId, title, content, source, vector, indexedAt);
+        return new SearchDoc(id, tenantId, collection, externalId, title, content, source, vector, location, indexedAt);
     }
 }

@@ -35,3 +35,13 @@ yowyob:
       k: ${SEARCH_EMBEDDING_K:20}
       num-candidates: ${SEARCH_EMBEDDING_NUM_CANDIDATES:100}
       boost: ${SEARCH_EMBEDDING_BOOST:2.0}
+    geo:
+      # Géolocalisation : géocodage d'adresse (Nominatim/OSM + gazetteer Cameroun intégré) et
+      # recherche de proximité (lat/lon, ville, ou « près de moi » via géoloc de l'IP appelante).
+      enabled: ${SEARCH_GEO_ENABLED:true}
+      nominatim-url: ${NOMINATIM_URL:https://nominatim.openstreetmap.org}
+      ipapi-url: ${IPAPI_URL:https://ipapi.co}
+      user-agent: ${GEO_USER_AGENT:yowyob-search}
+      default-lat: ${GEO_DEFAULT_LAT:4.0511}
+      default-lon: ${GEO_DEFAULT_LON:9.7679}
+      default-radius-km: ${GEO_DEFAULT_RADIUS_KM:10.0}
