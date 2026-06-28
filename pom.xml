@@ -38,6 +38,21 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-actuator</artifactId>
         </dependency>
+        <!-- Observabilité : métriques Prometheus exposées sur /actuator/prometheus -->
+        <dependency>
+            <groupId>io.micrometer</groupId>
+            <artifactId>micrometer-registry-prometheus</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+        <!-- Observabilité : traces distribuées exportées en OTLP vers Tempo -->
+        <dependency>
+            <groupId>io.micrometer</groupId>
+            <artifactId>micrometer-tracing-bridge-otel</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.opentelemetry</groupId>
+            <artifactId>opentelemetry-exporter-otlp</artifactId>
+        </dependency>
         <!-- OpenAPI / Swagger UI (WebFlux). UI sur /swagger-ui.html, spec sur /v3/api-docs.
              Hors /api/** donc non soumis au filtre d auth (cf KernelAuthWebFilter). -->
         <dependency>

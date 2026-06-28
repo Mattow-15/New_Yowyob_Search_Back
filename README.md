@@ -95,6 +95,16 @@ Le **backend** de chaque projet (jamais le navigateur) :
 2. à chaque suppression → `DELETE /api/index/{collection}/{id}` ;
 3. pour la barre de recherche → `GET /api/search?q=...`.
 
+## Observabilité (optionnelle)
+Métriques **Prometheus** exposées sur `/actuator/prometheus`, **traces** OTLP (opt-in) et **logs**
+agrégés. Une stack prête à l'emploi (Prometheus + Loki/Promtail + Tempo + Grafana) :
+```bash
+docker compose -f docker-compose.prod.yml -f docker-compose.observability.yml up -d
+```
+Grafana est sur `127.0.0.1:3001` (tunnel SSH, pas d'exposition publique), datasources
+pré-provisionnées. Pour les traces, ajouter au `.env` : `TRACING_ENABLED=true` et
+`OTLP_TRACING_ENDPOINT=http://tempo:4318/v1/traces`.
+
 ## Déploiement
 Spring Boot + Elasticsearch dédié. CI GitHub Actions → image GHCR → déploiement SSH, exposé par
 Traefik sur `search.yowyob.com`. Variables runtime dans le `.env` serveur (`KERNEL_BASE_URL`). Auth déléguée au kernel : plus de `SEARCH_API_KEYS`.

@@ -11,11 +11,30 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info
+        include: health,info,prometheus,metrics
   endpoint:
     health:
       probes:
         enabled: true
+  metrics:
+    tags:
+      application: ${spring.application.name}
+  prometheus:
+    metrics:
+      export:
+        enabled: true
+  tracing:
+    # Tracing opt-in : activé seulement quand la stack d'observabilité tourne, pour éviter
+    # tout bruit/erreur d'export quand aucun collecteur n'est présent.
+    enabled: ${TRACING_ENABLED:false}
+    sampling:
+      # Échantillonnage des traces (1.0 = tout ; baisser en prod si volume élevé).
+      probability: ${TRACING_SAMPLE_PROBABILITY:0.1}
+  otlp:
+    tracing:
+      # Endpoint OTLP de Tempo (utilisé quand TRACING_ENABLED=true) :
+      #   OTLP_TRACING_ENDPOINT=http://tempo:4318/v1/traces
+      endpoint: ${OTLP_TRACING_ENDPOINT:http://localhost:4318/v1/traces}
 
 yowyob:
   search:
