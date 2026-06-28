@@ -29,7 +29,21 @@ public final class DocumentMapper {
                 extractTitle(safeSource),
                 flatten(safeSource),
                 safeSource,
+                null, // textVector renseigné de façon asynchrone par IndexService (embeddings)
                 Instant.now());
+    }
+
+    /** Texte servant à générer l'embedding sémantique : titre + contenu aplati. */
+    public static String embeddingText(SearchDoc doc) {
+        StringJoiner joiner = new StringJoiner(" ");
+        if (doc.title() != null && !doc.title().isBlank()) {
+            joiner.add(doc.title());
+        }
+        if (doc.content() != null && !doc.content().isBlank()) {
+            joiner.add(doc.content());
+        }
+        String text = joiner.toString().trim();
+        return text.isEmpty() ? null : text;
     }
 
     private static String extractTitle(Map<String, Object> source) {

@@ -48,6 +48,22 @@ Réponse :
 ```
 `collection` est optionnel (omis = recherche tous types). Résultats toujours scopés au tenant.
 
+## Recherche sémantique (hybride)
+En plus du lexical « search-as-you-type » (edge-ngram), le service fait de la **recherche
+sémantique** : chaque document est vectorisé par le micro-service [`yowyob-embeddings`](yowyob-embeddings/)
+(modèle multilingue 384 dims) et chaque requête combine **lexical + kNN vectoriel**. Une recherche
+`q=ordinateur portable` remonte aussi un `"laptop"` même sans mot-clé commun.
+
+- Transparent : **même endpoint** `GET /api/search`, aucune option à passer.
+- **Tolérant aux pannes** : si `yowyob-embeddings` est indisponible (ou `SEARCH_EMBEDDING_ENABLED=false`),
+  le service **dégrade automatiquement** vers le lexical seul.
+- Réglages via env : `SEARCH_EMBEDDING_ENABLED`, `EMBEDDING_SERVICE_URL`, `SEARCH_EMBEDDING_K`,
+  `SEARCH_EMBEDDING_NUM_CANDIDATES`, `SEARCH_EMBEDDING_BOOST`.
+
+> ⚠️ L'index passe de `-v2` à `-v3` (ajout du champ vectoriel). Au déploiement, un index neuf est
+> créé : les données existantes doivent être **ré-poussées** par les clients pour bénéficier du
+> sémantique (le lexical, lui, fonctionne dès le premier push).
+
 ## Intégration type
 Le **backend** de chaque projet (jamais le navigateur) :
 1. à chaque création/màj d'une entité → `PUT /api/index/{collection}/{id}` ;

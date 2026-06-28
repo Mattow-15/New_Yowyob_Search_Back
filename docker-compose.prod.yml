@@ -12,8 +12,12 @@ services:
       ELASTICSEARCH_URIS: http://search-elasticsearch:9200
       # Auth déléguée au kernel : valide X-Client-Id + X-Api-Key via le kernel. Aucune clé statique.
       KERNEL_BASE_URL: ${KERNEL_BASE_URL:-http://kernel-core-kernel-layer-1:8080}
+      # Recherche sémantique : micro-service d'embeddings dédié (repli lexical si indisponible).
+      EMBEDDING_SERVICE_URL: http://yowyob-embeddings:8000
     depends_on:
       search-elasticsearch:
+        condition: service_healthy
+      yowyob-embeddings:
         condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8080/actuator/health/readiness >/dev/null || exit 1"]
@@ -50,6 +54,20 @@ services:
       timeout: 10s
       retries: 10
       start_period: 60s
+    networks:
+      - search-net
+
+  # Micro-service d'embeddings (sémantique). Image publiée sur GHCR par la CI.
+  yowyob-embeddings:
+    image: "${EMBEDDINGS_IMAGE:-ghcr.io/yowyob/yowyob-search-embeddings:latest}"
+    pull_policy: always
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/health').status==200 else 1)\""]
+      interval: 15s
+      timeout: 10s
+      retries: 20
+      start_period: 90s
     networks:
       - search-net
 

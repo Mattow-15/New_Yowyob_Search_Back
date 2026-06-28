@@ -53,7 +53,8 @@ jobs:
             set -e
             cd '${{ vars.SEARCH_DIR }}'
             export SEARCH_IMAGE='${SEARCH_IMAGE}'
-            docker compose -f docker-compose.prod.yml pull yowyob-search
+            # EMBEDDINGS_IMAGE laissé au défaut (:latest) du compose ; publié par son propre workflow.
+            docker compose -f docker-compose.prod.yml pull yowyob-search yowyob-embeddings
             docker compose -f docker-compose.prod.yml up -d
             docker compose -f docker-compose.prod.yml ps
             docker image prune -f

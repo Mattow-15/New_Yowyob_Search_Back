@@ -25,3 +25,13 @@ yowyob:
       enabled: ${SEARCH_AUTH_ENABLED:true}
       kernel-base-url: ${KERNEL_BASE_URL:http://kernel-core-kernel-layer-1:8080}
       cache-ttl-seconds: ${SEARCH_AUTH_CACHE_TTL:300}
+    embedding:
+      # Recherche sémantique : chaque document est enrichi d'un vecteur (textVector) via le
+      # micro-service yowyob-embeddings, et les requêtes combinent lexical (edge-ngram) + kNN.
+      # Si désactivé ou si le service est injoignable, on dégrade vers le lexical seul.
+      enabled: ${SEARCH_EMBEDDING_ENABLED:true}
+      url: ${EMBEDDING_SERVICE_URL:http://localhost:8000}
+      dimensions: ${SEARCH_EMBEDDING_DIMENSIONS:384}
+      k: ${SEARCH_EMBEDDING_K:20}
+      num-candidates: ${SEARCH_EMBEDDING_NUM_CANDIDATES:100}
+      boost: ${SEARCH_EMBEDDING_BOOST:2.0}

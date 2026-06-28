@@ -1,0 +1,7 @@
+fastapi>=0.104.1
+uvicorn>=0.23.2
+pydantic>=2.4.2
+# torch CPU-only : évite de tirer ~3 Go de paquets CUDA/Nvidia inutiles sur le serveur.
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch
+sentence-transformers>=2.2.2
