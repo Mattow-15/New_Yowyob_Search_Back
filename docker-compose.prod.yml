@@ -27,7 +27,7 @@ services:
       start_period: 60s
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.yowyob-search.rule=Host(`search.yowyob.com`) && (PathPrefix(`/api/search`) || PathPrefix(`/api/geo`) || PathPrefix(`/api/index`) || PathPrefix(`/actuator`) || PathPrefix(`/v3/api-docs`) || PathPrefix(`/swagger-ui`))"
+      - "traefik.http.routers.yowyob-search.rule=Host(`search.yowyob.com`) && (PathPrefix(`/api/search`) || PathPrefix(`/api/geo`) || PathPrefix(`/api/index`) || PathPrefix(`/actuator`) || PathPrefix(`/v3/api-docs`) || PathPrefix(`/swagger-ui`) || PathPrefix(`/webjars`))"
       - "traefik.http.routers.yowyob-search.entrypoints=websecure"
       - "traefik.http.routers.yowyob-search.tls=true"
       - "traefik.http.routers.yowyob-search.tls.certresolver=letsencrypt"
