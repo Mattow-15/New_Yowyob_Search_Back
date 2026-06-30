@@ -31,7 +31,7 @@ jobs:
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: "17"
+          java-version: "21"
           cache: maven
           cache-dependency-path: microservices/${{ matrix.module }}/pom.xml
       - run: mvn -q -f "microservices/${{ matrix.module }}/pom.xml" test
