@@ -1,0 +1,170 @@
+# Secrets / variables d'environnement (ne JAMAIS committer : cles API, KERNEL_API_KEY, etc.)
+.env
+.env.*
+!.env.example
+
+# Maven
+target/
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+release.properties
+dependency-reduced-pom.xml
+buildNumber.properties
+.mvn/timing.properties
+.mvn/wrapper/maven-wrapper.jar
+
+# IDE
+.idea/
+.vscode/
+*.iml
+*.iws
+*.ipr
+*.swp
+*.swo
+*~
+.DS_Store
+.classpath
+.project
+.settings/
+.factorypath
+
+# Gradle (si utilisé)
+.gradle/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+
+# Node (si utilisé par certains services)
+node_modules/
+npm-debug.log
+yarn-error.log
+package-lock.json
+yarn.lock
+
+# Runtime
+*.class
+*.jar
+!*-sources.jar
+*.log
+*.out
+*.pid
+*.seed
+*.pid.lock
+
+# Databases
+*.db
+*.sqlite
+*.sqlite3
+*.h2.db
+
+
+
+# OS
+.DS_Store
+Thumbs.db
+.AppleDouble
+.LSOverride
+._.
+._*
+
+# Elasticsearch (données locales)
+data/
+.elasticsearch/
+
+# Application logs
+*.log
+logs/
+
+# Generated files
+generated/
+generated-sources/
+generated-test-sources/
+
+# Test reports
+test-results/
+surefire-reports/
+
+# Distribution / packaging
+dist/
+.Python
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Local development files
+local/
+.local/
+
+# Docker (volumes, caches)
+.docker/
+docker-compose.override.yml
+
+# Backup files
+*.bak
+*.backup
+*.tmp
+*~
+
+# Compiled files
+*.o
+*.a
+*.so
+
+# Archives
+*.zip
+*.tar.gz
+*.rar
+
+# IDE-specific
+.vscode/extensions.json
+.vscode/launch.json
+.vscode/settings.json
+.vscode/tasks.json
+
+# Spring Boot
+application-local.yml
+application-dev.yml
+application-test.yml
+
+# Misc generated/compiled
+*.orig
+.merge_file*
+auth-service/target/auth-service-1.0.0.jar
+auth-service/target/auth-service-1.0.0.jar.original
+auth-service/target/classes/com/yowyob/auth/AuthServiceApplication.class
+auth-service/target/classes/com/yowyob/auth/config/CorsConfig.class
+auth-service/target/classes/com/yowyob/auth/config/DataInitializer.class
+auth-service/target/classes/com/yowyob/auth/config/SecurityConfig.class
+auth-service/target/classes/com/yowyob/auth/controller/AuthController.class
+auth-service/target/classes/com/yowyob/auth/dto/AuthResponse.class
+auth-service/target/classes/com/yowyob/auth/dto/AuthResponse$AuthResponseBuilder.class
+auth-service/target/classes/com/yowyob/auth/dto/AuthResponse$UserDto.class
+auth-service/target/classes/com/yowyob/auth/dto/AuthResponse$UserDto$UserDtoBuilder.class
+auth-service/target/classes/com/yowyob/auth/dto/ErrorResponse.class
+auth-service/target/classes/com/yowyob/auth/dto/ErrorResponse$ErrorResponseBuilder.class
+auth-service/target/classes/com/yowyob/auth/dto/GoogleLoginRequest.class
+auth-service/target/classes/com/yowyob/auth/dto/LoginRequest.class
+auth-service/target/classes/com/yowyob/auth/dto/RegisterRequest.class
+auth-service/target/classes/com/yowyob/auth/entity/User.class
+auth-service/target/classes/com/yowyob/auth/entity/User$Role.class
+auth-service/target/classes/com/yowyob/auth/entity/User$Status.class
+auth-service/target/classes/com/yowyob/auth/entity/User$UserBuilder.class
+auth-service/target/classes/com/yowyob/auth/exception/GlobalExceptionHandler.class
+auth-service/target/classes/com/yowyob/auth/repository/UserRepository.class
+auth-service/target/classes/com/yowyob/auth/service/AuthService.class
+auth-service/target/classes/com/yowyob/auth/service/GoogleAuthVerifier.class
+auth-service/target/classes/com/yowyob/auth/service/JwtService.class
+auth-service/target/maven-archiver/pom.properties
+auth-service/target/maven-status/maven-compiler-plugin/compile/default-compile/createdFiles.lst
+auth-service/target/maven-status/maven-compiler-plugin/compile/default-compile/inputFiles.lst

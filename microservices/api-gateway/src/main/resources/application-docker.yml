@@ -1,0 +1,151 @@
+spring:
+  application:
+    name: api-gateway
+  cloud:
+    gateway:
+      globalcors:
+        cors-configurations:
+          "[/**]":
+            allowedOrigins: "http://localhost:3000"
+            allowedMethods:
+              - GET
+              - POST
+              - PUT
+              - DELETE
+              - OPTIONS
+            allowedHeaders: "*"
+            allowCredentials: true
+      default-filters:
+        - DedupeResponseHeader=Access-Control-Allow-Origin Access-Control-Allow-Credentials, RETAIN_UNIQUE
+
+logging:
+  level:
+    org.springframework.cloud.gateway: DEBUG
+    org.springframework.http.server.reactive: DEBUG
+    org.springframework.web.reactive: DEBUG
+    com.yowyob.gateway: DEBUG
+    reactor.netty: DEBUG
+  file:
+    name: /var/log/app/api-gateway/api-gateway.log
+  pattern:
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] [%X{traceId:-},%X{spanId:-}] %-5level %logger{36} - %msg%n"
+
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/yowyob_auth}
+    username: ${SPRING_DATASOURCE_USERNAME:postgres}
+    password: ${SPRING_DATASOURCE_PASSWORD:postgres}
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+
+  redis:
+    host: ${SPRING_REDIS_HOST:localhost}
+    port: ${SPRING_REDIS_PORT:6379}
+
+server:
+  port: ${PORT:8080}
+
+jwt:
+  secret: ${JWT_SECRET:yowyob-super-secret-key-change-this-in-production-minimum-256-bits}
+  expiration: 3600000
+  refresh-expiration: 604800000
+
+management:
+  endpoints:
+    web:
+      base-path: /management
+      exposure:
+        include: health,info,prometheus,metrics
+  endpoint:
+    health:
+      show-details: always
+    prometheus:
+      enabled: true
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+    tags:
+      application: ${spring.application.name}
+
+  tracing:
+    enabled: false
+  zipkin:
+    tracing:
+      endpoint: ${ZIPKIN_ENDPOINT:http://tempo:9411/api/v2/spans}
+
+spring.cloud.gateway.routes:
+  # Auth Service Route
+  - id: auth-service
+    uri: ${AUTH_SERVICE_URL:http://auth-service:8081}
+    predicates:
+      - Path=/api/auth/**
+    filters:
+      - JwtAuthenticationFilter
+      - RewritePath=/api/auth/(?<segment>.*), /api/v1/auth/${segment}
+
+  # Search Service Route
+  - id: search-service
+    uri: ${SEARCH_SERVICE_URL:http://search-final:8082}
+    predicates:
+      - Path=/api/search/**
+    filters:
+      - JwtAuthenticationFilter
+      - RewritePath=/api/search/(?<segment>.*), /api/search/${segment}
+
+  # Geo Service Route
+  - id: geo-service
+    uri: ${GEO_SERVICE_URL:http://geo-final:8085}
+    predicates:
+      - Path=/api/geo/**
+    filters:
+      - JwtAuthenticationFilter
+      - RewritePath=/api/geo/(?<segment>.*), /api/geo/${segment}
+
+  # User Service Route
+  - id: user-service
+    uri: ${USER_SERVICE_URL:http://user-service:8084}
+    predicates:
+      - Path=/api/users/**
+    filters:
+      - JwtAuthenticationFilter
+
+  # Listing Service Route
+  - id: listing-service
+    uri: ${LISTING_SERVICE_URL:http://listing-service:8083}
+    predicates:
+      - Path=/api/listings/**
+    filters:
+      - JwtAuthenticationFilter
+
+  # Products Route (alias for listings)
+  - id: products-service
+    uri: ${LISTING_SERVICE_URL:http://listing-service:8083}
+    predicates:
+      - Path=/api/products/**
+    filters:
+      - JwtAuthenticationFilter
+      - RewritePath=/api/products/(?<segment>.*), /api/listings/${segment}
+
+  # Notification Service Route
+  - id: notification-service
+    uri: ${NOTIFICATION_SERVICE_URL:http://notification-service:8087}
+    predicates:
+      - Path=/api/notifications/**
+    filters:
+      - JwtAuthenticationFilter
+
+  # Crawler Service Route
+  - id: crawler-service
+    uri: ${CRAWLER_SERVICE_URL:http://crawler-service:8086}
+    predicates:
+      - Path=/api/crawler/**
+    filters:
+      - JwtAuthenticationFilter

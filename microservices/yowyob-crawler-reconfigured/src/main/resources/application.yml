@@ -1,0 +1,74 @@
+google:
+  places:
+    api-key: ${GOOGLE_PLACES_API_KEY:}
+
+crawler:
+  cities:
+    - name: Yaoundé
+      lat: 3.8480
+      lng: 11.5021
+      radius-meters: 15000
+    - name: Douala
+      lat: 4.0511
+      lng: 9.7679
+      radius-meters: 15000
+    - name: Bafoussam
+      lat: 5.4737
+      lng: 10.4179
+      radius-meters: 10000
+  osm-types:
+    - restaurant
+    - pharmacy
+    - supermarket
+    - bank
+    - hospital
+    - shop
+  schedule:
+    cron: "0 0 2 * * *"
+
+spring:
+  application:
+    name: crawler-service
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+
+kafka:
+  topics:
+    listings: crawler.listings.events
+
+server:
+  port: 8086
+
+internal:
+  services:
+    listing-service: http://listing-service:8083
+    user-service: http://user-service:8084
+
+elasticsearch:
+  url: http://yowyob-elasticsearch:9200
+
+kernel:
+  ingestion:
+    api:
+      url:       ${KERNEL_API_URL:http://localhost:8090}
+      client-id: ${KERNEL_CLIENT_ID:yowyob-search}
+      api-key:   ${KERNEL_API_KEY:placeholder-key}
+    tenant-id:   ${KERNEL_TENANT_ID:placeholder-tenant}
+    # Liste d'organisations a indexer (le listing Kernel est scope par organisation).
+    # CSV via env : KERNEL_ORGANIZATION_IDS=org-a,org-b. Vide => rien a synchroniser.
+    organization-ids: ${KERNEL_ORGANIZATION_IDS:}
+    page-size:   100
+    sync-cron:   ${KERNEL_SYNC_CRON:0 0 */6 * * *}   # toutes les 6h ; PAS la minute (quotas)
+
+businessbook:
+  api:
+    base-url:     ${BUSINESSBOOK_BASE_URL:http://localhost:8095}
+  service-name:   ${BUSINESSBOOK_SERVICE_NAME:business-book}
+  service-token:  ${BUSINESSBOOK_S2S_TOKEN:placeholder-jwt}
+  page-size:      100
+  sync-cron:      ${BUSINESSBOOK_SYNC_CRON:0 */5 * * * *}
+
+

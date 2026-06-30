@@ -1,0 +1,147 @@
+# ===================================================================
+# Crawler Service — Profil Docker
+# Surcharge application.properties pour l'environnement Docker Compose
+# ===================================================================
+
+server:
+  port: 8086
+
+spring:
+  application:
+    name: crawler-service
+
+  # H2 en mémoire (pas de volume nécessaire en prod)
+  datasource:
+    url: jdbc:h2:mem:crawler_db
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: ""
+  h2:
+    console:
+      enabled: false
+  jpa:
+    database-platform: org.hibernate.dialect.H2Dialect
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: false
+
+  # Redis
+  data:
+    redis:
+      host: ${SPRING_REDIS_HOST:yowyob-redis}
+      port: ${SPRING_REDIS_PORT:6379}
+
+  # Kafka
+  kafka:
+    bootstrap-servers: ${SPRING_KAFKA_BOOTSTRAP_SERVERS:kafka:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      properties:
+        spring.json.add.type.headers: false
+
+  # RabbitMQ
+  rabbitmq:
+    host: ${SPRING_RABBITMQ_HOST:rabbitmq}
+    port: ${SPRING_RABBITMQ_PORT:5672}
+    username: ${SPRING_RABBITMQ_USERNAME:guest}
+    password: ${SPRING_RABBITMQ_PASSWORD:guest}
+
+# ===================================================================
+# Google Places API
+# ===================================================================
+google:
+  places:
+    api-key: ${GOOGLE_PLACES_API_KEY}
+    base-url: https://maps.googleapis.com/maps/api/place
+    default-radius-meters: 50000
+    language: fr
+    connect-timeout-ms: 5000
+    read-timeout-ms: 15000
+
+# ===================================================================
+# Configuration du Crawler (villes et catégories)
+# ===================================================================
+yowyob:
+  crawler:
+    schedule:
+      cron: "0 0 2 * * *"   # Tous les jours à 2h du matin
+
+    cities:
+      - name: Yaoundé
+        lat: 3.8480
+        lng: 11.5021
+      - name: Douala
+        lat: 4.0511
+        lng: 9.7679
+      - name: Bafoussam
+        lat: 5.4737
+        lng: 10.4179
+      - name: Garoua
+        lat: 9.3016
+        lng: 13.3927
+      - name: Bamenda
+        lat: 5.9527
+        lng: 10.1459
+
+    categories:
+      - restaurant
+      - store
+      - pharmacy
+      - supermarket
+      - hospital
+      - bank
+      - gas_station
+      - hotel
+
+# ===================================================================
+# Topic Kafka cible
+# ===================================================================
+kafka:
+  topics:
+    listings: crawler.listings.events
+
+# ===================================================================
+# Logging
+# ===================================================================
+logging:
+  level:
+    com.yowyob.crawler: INFO
+    com.yowyob.crawler.service.places: DEBUG
+    org.springframework: WARN
+    org.hibernate: WARN
+
+# ===================================================================
+# Actuator
+# ===================================================================
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: always
+
+kernel:
+  ingestion:
+    api:
+      url:       ${KERNEL_API_URL:http://localhost:8090}
+      client-id: ${KERNEL_CLIENT_ID:yowyob-search}
+      api-key:   ${KERNEL_API_KEY:placeholder-key}
+    tenant-id:   ${KERNEL_TENANT_ID:placeholder-tenant}
+    # Liste d'organisations a indexer (le listing Kernel est scope par organisation).
+    # CSV via env : KERNEL_ORGANIZATION_IDS=org-a,org-b. Vide => rien a synchroniser.
+    organization-ids: ${KERNEL_ORGANIZATION_IDS:}
+    page-size:   100
+    sync-cron:   ${KERNEL_SYNC_CRON:0 0 */6 * * *}   # toutes les 6h ; PAS la minute (quotas)
+
+businessbook:
+  api:
+    base-url:     ${BUSINESSBOOK_BASE_URL:http://localhost:8095}
+  service-name:   ${BUSINESSBOOK_SERVICE_NAME:business-book}
+  service-token:  ${BUSINESSBOOK_S2S_TOKEN:placeholder-jwt}
+  page-size:      100
+  sync-cron:      ${BUSINESSBOOK_SYNC_CRON:0 */5 * * * *}
+
+

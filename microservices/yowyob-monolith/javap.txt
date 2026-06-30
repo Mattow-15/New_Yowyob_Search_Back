@@ -1,0 +1,32 @@
+Compiled from "NativeQueryBuilder.java"
+public class org.springframework.data.elasticsearch.client.elc.NativeQueryBuilder extends org.springframework.data.elasticsearch.core.query.BaseQueryBuilder<org.springframework.data.elasticsearch.client.elc.NativeQuery, org.springframework.data.elasticsearch.client.elc.NativeQueryBuilder> {
+  public org.springframework.data.elasticsearch.client.elc.NativeQueryBuilder();
+  public co.elastic.clients.elasticsearch._types.query_dsl.Query getQuery();
+  public co.elastic.clients.elasticsearch._types.query_dsl.Query getFilter();
+  public java.util.Map<java.lang.String, co.elastic.clients.elasticsearch._types.aggregations.Aggregation> getAggregations();
+  public co.elastic.clients.elasticsearch.core.search.Suggester getSuggester();
+  public co.elastic.clients.elasticsearch.core.search.FieldCollapse getFieldCollapse();
+  public java.util.List<co.elastic.clients.elasticsearch._types.SortOptions> getSortOptions();
+  public java.util.Map<java.lang.String, co.elastic.clients.json.JsonData> getSearchExtensions();
+  public co.elastic.clients.elasticsearch._types.KnnQuery getKnnQuery();
+  public java.util.List<co.elastic.clients.elasticsearch._types.KnnSearch> getKnnSearches();
+  public org.springframework.data.elasticsearch.core.query.Query getSpringDataQuery();
+  public org.springframework.data.elasticsearch.client.elc.NativeQueryBuilder withQuery(co.elastic.clients.elasticsearch._types.query_dsl.Query);
+  public org.springframework.data.elasticsearch.client.elc.NativeQueryBuilder withQuery(java.util.function.Function<co.elastic.clients.elasticsearch._types.query_dsl.Query$Builder, co.elastic.clients.util.ObjectBuilder<co.elastic.clients.elasticsearch._types.query_dsl.Query>>);
+  public org.springframework.data.elasticsearch.client.elc.NativeQueryBuilder withFilter(co.elastic.clients.elasticsearch._types.query_dsl.Query);
+  public org.springframework.data.elasticsearch.client.elc.NativeQueryBuilder withFilter(java.util.function.Function<co.elastic.clients.elasticsearch._types.query_dsl.Query$Builder, co.elastic.clients.util.ObjectBuilder<co.elastic.clients.elasticsearch._types.query_dsl.Query>>);
+  public org.springframework.data.elasticsearch.client.elc.NativeQueryBuilder withAggregation(java.lang.String, co.elastic.clients.elasticsearch._types.aggregations.Aggregation);
+  public org.springframework.data.elasticsearch.client.elc.NativeQueryBuilder withSuggester(co.elastic.clients.elasticsearch.core.search.Suggester);
+  public org.springframework.data.elasticsearch.client.elc.NativeQueryBuilder withFieldCollapse(co.elastic.clients.elasticsearch.core.search.FieldCollapse);
+  public org.springframework.data.elasticsearch.client.elc.NativeQueryBuilder withSort(java.util.List<co.elastic.clients.elasticsearch._types.SortOptions>);
+  public org.springframework.data.elasticsearch.client.elc.NativeQueryBuilder withSort(co.elastic.clients.elasticsearch._types.SortOptions, co.elastic.clients.elasticsearch._types.SortOptions...);
+  public org.springframework.data.elasticsearch.client.elc.NativeQueryBuilder withSort(java.util.function.Function<co.elastic.clients.elasticsearch._types.SortOptions$Builder, co.elastic.clients.util.ObjectBuilder<co.elastic.clients.elasticsearch._types.SortOptions>>);
+  public org.springframework.data.elasticsearch.client.elc.NativeQueryBuilder withSearchExtension(java.lang.String, co.elastic.clients.json.JsonData);
+  public org.springframework.data.elasticsearch.client.elc.NativeQueryBuilder withSearchExtensions(java.util.Map<java.lang.String, co.elastic.clients.json.JsonData>);
+  public org.springframework.data.elasticsearch.client.elc.NativeQueryBuilder withQuery(org.springframework.data.elasticsearch.core.query.Query);
+  public org.springframework.data.elasticsearch.client.elc.NativeQueryBuilder withKnnSearches(java.util.List<co.elastic.clients.elasticsearch._types.KnnSearch>);
+  public org.springframework.data.elasticsearch.client.elc.NativeQueryBuilder withKnnSearches(java.util.function.Function<co.elastic.clients.elasticsearch._types.KnnSearch$Builder, co.elastic.clients.util.ObjectBuilder<co.elastic.clients.elasticsearch._types.KnnSearch>>);
+  public org.springframework.data.elasticsearch.client.elc.NativeQueryBuilder withKnnSearches(co.elastic.clients.elasticsearch._types.KnnSearch);
+  public org.springframework.data.elasticsearch.client.elc.NativeQuery build();
+  public org.springframework.data.elasticsearch.core.query.BaseQuery build();
+}

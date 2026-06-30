@@ -1,0 +1,472 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: yowyob-postgres
+    environment:
+      POSTGRES_DB: yowyob_auth
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data_17_v1:/var/lib/postgresql/data
+      # - ./init-databases.sql:/docker-entrypoint-initdb.d/init-databases.sql
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  elasticsearch:
+    image: elasticsearch:9.4.2
+    container_name: yowyob-elasticsearch
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s http://localhost:9200 >/dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
+
+  redis:
+    image: redis:7-alpine
+    container_name: yowyob-redis
+    ports:
+      - "6379:6379"
+    networks:
+      - app-network
+
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: yowyob-rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      - RABBITMQ_DEFAULT_USER=guest
+      - RABBITMQ_DEFAULT_PASS=guest
+    networks:
+      - app-network
+
+  # ========== MICROSERVICES ==========
+
+  api-gateway:
+    build:
+      context: ./api-gateway
+      dockerfile: Dockerfile
+    container_name: api-gateway
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    ports:
+      - "8080:8080"
+    volumes:
+      - app-logs:/var/log/app
+    deploy:
+      resources:
+        limits:
+          memory: 384M
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - JAVA_OPTS=-Xmx256m -Xms128m
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/yowyob_auth
+      - SPRING_DATASOURCE_USERNAME=postgres
+      - SPRING_DATASOURCE_PASSWORD=postgres
+      - SPRING_REDIS_HOST=redis
+      - SPRING_REDIS_PORT=6379
+      - JWT_SECRET=your-super-secret-jwt-key-change-in-production
+      - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - SPRING_KAFKA_CONSUMER_PROPERTIES_SPRING_JSON_TRUSTED_PACKAGES=*
+      - SPRING_KAFKA_CONSUMER_PROPERTIES_SPRING_JSON_USE_TYPE_HEADERS=false
+      - SPRING_KAFKA_CONSUMER_PROPERTIES_SPRING_JSON_VALUE_DEFAULT_TYPE=com.yowyob.auth.event.UserCreatedEvent
+      - SEARCH_SERVICE_URL=http://host.docker.internal:8082
+      - CRAWLER_SERVICE_URL=http://host.docker.internal:8086
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    networks:
+      - app-network
+
+  auth-service:
+    build:
+      context: ./auth-service
+      dockerfile: Dockerfile
+    container_name: auth-service
+    ports:
+      - "8081:8081"
+    deploy:
+      resources:
+        limits:
+          memory: 384M
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - JAVA_OPTS=-Xmx256m -Xms128m
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/yowyob_auth
+      - SPRING_DATASOURCE_USERNAME=postgres
+      - SPRING_DATASOURCE_PASSWORD=postgres
+      - SPRING_REDIS_HOST=redis
+      - SPRING_REDIS_PORT=6379
+      - JWT_SECRET=your-super-secret-jwt-key-change-in-production
+      - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - SPRING_KAFKA_CONSUMER_PROPERTIES_SPRING_JSON_TRUSTED_PACKAGES=*
+      - SPRING_KAFKA_CONSUMER_PROPERTIES_SPRING_JSON_USE_TYPE_HEADERS=false
+      - SPRING_KAFKA_CONSUMER_PROPERTIES_SPRING_JSON_VALUE_DEFAULT_TYPE=com.yowyob.auth.event.UserCreatedEvent
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    networks:
+      - app-network
+
+  search-final:
+    build:
+      context: ./search-service
+      dockerfile: Dockerfile
+    container_name: search-final
+    network_mode: "host"
+    deploy:
+      resources:
+        limits:
+          memory: 384M
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - JAVA_OPTS=-Xmx256m -Xms128m
+      - SPRING_REDIS_HOST=localhost
+      - SPRING_REDIS_PORT=6379
+      - SPRING_RABBITMQ_HOST=localhost
+      - SPRING_RABBITMQ_PORT=5672
+      - SPRING_RABBITMQ_USERNAME=guest
+      - SPRING_RABBITMQ_PASSWORD=guest
+      - SPRING_ELASTICSEARCH_URIS=http://localhost:9200
+      - GROQ_API_KEY=${GROQ_API_KEY}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - GOOGLE_PLACES_API_KEY=${GOOGLE_PLACES_API_KEY}
+      - YOWYOB_JWT_SECRET=your-super-secret-jwt-key-change-in-production
+      - KERNEL_AUTH_ENABLED=false
+    depends_on:
+      redis:
+        condition: service_started
+      elasticsearch:
+        condition: service_healthy
+
+  listing-service:
+    build:
+      context: ./listing-service
+      dockerfile: Dockerfile
+    container_name: listing-service
+    ports:
+      - "8083:8083"
+    deploy:
+      resources:
+        limits:
+          memory: 384M
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - JAVA_OPTS=-Xmx256m -Xms128m
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/yowyob_listings
+      - SPRING_DATASOURCE_USERNAME=postgres
+      - SPRING_DATASOURCE_PASSWORD=postgres
+      - SPRING_REDIS_HOST=redis
+      - SPRING_REDIS_PORT=6379
+      - SPRING_RABBITMQ_HOST=rabbitmq
+      - SPRING_RABBITMQ_PORT=5672
+      - SPRING_RABBITMQ_USERNAME=guest
+      - SPRING_RABBITMQ_PASSWORD=guest
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    networks:
+      - app-network
+
+  user-service:
+    build:
+      context: ./user-service
+      dockerfile: Dockerfile
+    container_name: user-service
+    ports:
+      - "8084:8084"
+    deploy:
+      resources:
+        limits:
+          memory: 384M
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - JAVA_OPTS=-Xmx256m -Xms128m
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/yowyob_users
+      - SPRING_DATASOURCE_USERNAME=postgres
+      - SPRING_DATASOURCE_PASSWORD=postgres
+      - SPRING_REDIS_HOST=redis
+      - SPRING_REDIS_PORT=6379
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    networks:
+      - app-network
+
+  geo-final:
+    build:
+      context: ./geo-service
+      dockerfile: Dockerfile
+    container_name: geo-final
+    ports:
+      - "8085:8085"
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+    environment:
+      - JAVA_OPTS=-Xmx128m -Xms64m
+      - SPRING_REDIS_HOST=redis
+      - SPRING_REDIS_PORT=6379
+    depends_on:
+      - redis
+    networks:
+      - app-network
+
+  notification-service:
+    build:
+      context: ./notification-service
+      dockerfile: Dockerfile
+    container_name: notification-service
+    ports:
+      - "8087:8087"
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+    environment:
+      - JAVA_OPTS=-Xmx128m -Xms64m
+      - SPRING_RABBITMQ_HOST=rabbitmq
+      - SPRING_RABBITMQ_PORT=5672
+      - SPRING_RABBITMQ_USERNAME=guest
+      - SPRING_RABBITMQ_PASSWORD=guest
+    depends_on:
+      - rabbitmq
+    networks:
+      - app-network
+
+  crawler-service:
+    build:
+      context: ./yowyob-crawler-reconfigured
+      dockerfile: Dockerfile
+    container_name: crawler-service
+    network_mode: "host"
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SERVER_PORT=8086
+      - SPRING_REDIS_HOST=localhost
+      - SPRING_REDIS_PORT=6379
+      - SPRING_RABBITMQ_HOST=localhost
+      - SPRING_RABBITMQ_PORT=5672
+      - SPRING_RABBITMQ_USERNAME=guest
+      - SPRING_RABBITMQ_PASSWORD=guest
+      - SPRING_KAFKA_BOOTSTRAP_SERVERS=localhost:9094
+      - ELASTICSEARCH_URL=http://localhost:9200
+      - GOOGLE_PLACES_API_KEY=${GOOGLE_PLACES_API_KEY}
+      - SCRAPER_GOOGLELOCALMOCK_ENABLED=${SCRAPER_GOOGLELOCALMOCK_ENABLED:-false}
+      # ── Kernel organization-core ──────────────────────────────────────────
+      # URL de la passerelle Kernel (reseau prive : VPN/labo requis)
+      - KERNEL_API_URL=${KERNEL_API_URL:-http://api.10.50.30.102.nip.io}
+      # Identite machine (ClientApplication provisionee par l'equipe Kernel)
+      - KERNEL_CLIENT_ID=${KERNEL_CLIENT_ID}
+      - KERNEL_API_KEY=${KERNEL_API_KEY}
+      - KERNEL_TENANT_ID=${KERNEL_TENANT_ID}
+      # CSV des organizationId a indexer (ex: org-a,org-b). Vide => sync desactive
+      - KERNEL_ORGANIZATION_IDS=${KERNEL_ORGANIZATION_IDS:-}
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      kafka:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_started
+
+  yowyob-embeddings:
+    build:
+      context: ./yowyob-embeddings
+      dockerfile: Dockerfile
+      network: host
+    container_name: yowyob-embeddings
+    network_mode: "host"
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # ========== INFRASTRUCTURE & MONITORING ==========
+
+  # prometheus:
+  #   image: prom/prometheus:latest
+  #   container_name: prometheus
+  #   volumes:
+  #     - ./prometheus.yml:/etc/prometheus/prometheus.yml
+  #   ports:
+  #     - "9090:9090"
+  #   networks:
+  #     - app-network
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.0.1
+    container_name: zookeeper
+    ports:
+      - "2181:2181"
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    networks:
+      - app-network
+
+  kafka:
+    image: confluentinc/cp-kafka:7.0.1
+    container_name: kafka
+    ports:
+      - "9092:9092"
+      - "9094:9094"
+    depends_on:
+      - zookeeper
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ZOOKEEPER_SESSION_TIMEOUT_MS: 6000
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,EXTERNAL://0.0.0.0:9094
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,EXTERNAL://localhost:9094
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,EXTERNAL:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_DELETE_TOPIC_ENABLE: "true"
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD-SHELL", "kafka-topics --bootstrap-server localhost:9092 --list || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 45s
+
+  # loki:
+  #   image: grafana/loki:2.9.2
+  #   container_name: loki
+  #   restart: unless-stopped
+  #   user: "0"
+  #   ports:
+  #     - "3100:3100"
+  #   volumes:
+  #     - loki_data:/loki
+  #     - ./loki-config.yaml:/etc/loki/local-config.yaml:ro
+  #   command: -config.file=/etc/loki/local-config.yaml
+  #   networks:
+  #     - app-network
+
+  # promtail:
+  #   image: grafana/promtail:2.9.2
+  #   container_name: promtail
+  #   restart: unless-stopped
+  #   volumes:
+  #     - app-logs:/var/log/app:ro
+  #     - ./promtail-config.yaml:/etc/promtail/config.yml:ro
+  #   command: -config.file=/etc/promtail/config.yml
+  #   depends_on:
+  #     - loki
+  #   networks:
+  #     - app-network
+
+  # tempo:
+  #   image: grafana/tempo:latest
+  #   container_name: tempo
+  #   user: "0"
+  #   ports:
+  #     - "3200:3200"
+  #     - "4318:4318"
+  #     - "9411:9411"
+  #   volumes:
+  #     - ./tempo-config.yaml:/etc/tempo/config.yaml
+  #     - tempo_data:/tmp/tempo
+  #   command: -config.file=/etc/tempo/config.yaml
+  #   networks:
+  #     - app-network
+
+  # grafana:
+  #   image: grafana/grafana:latest
+  #   container_name: grafana
+  #   environment:
+  #     - GF_AUTH_ANONYMOUS_ENABLED=true
+  #     - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
+  #     - GF_AUTH_DISABLE_LOGIN_FORM=true
+  #     - GF_SMTP_ENABLED=true
+  #     - GF_SMTP_HOST=smtp.gmail.com:587
+  #     - GF_SMTP_USER=rtchapetngamini@gmail.com
+  #     - GF_SMTP_PASSWORD=avihfivmwtwsalhz
+  #     - GF_SMTP_FROM_ADDRESS=rtchapetngamini@gmail.com
+  #     - GF_SMTP_FROM_NAME=Grafana Alerts
+  #     - GF_SMTP_SKIP_VERIFY=false
+  #     - GF_ALERTING_ENABLED=true
+  #     - GF_UNIFIED_ALERTING_ENABLED=true
+  #   ports:
+  #     - "3001:3000"
+  #   volumes:
+  #     - grafana_data:/var/lib/grafana
+  #     - ./grafana1/provisioning/datasources:/etc/grafana/provisioning/datasources
+  #   depends_on:
+  #     - loki
+  #     - prometheus
+  #     - tempo
+  #   networks:
+  #     - app-network
+
+volumes:
+  postgres_data_17_v1:
+  elasticsearch_data:
+  grafana_data:
+  tempo_data:
+  loki_data:
+  app-logs:
+
+networks:
+  app-network:
+    driver: bridge
+
+  

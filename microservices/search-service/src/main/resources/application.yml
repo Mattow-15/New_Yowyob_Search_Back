@@ -1,0 +1,49 @@
+spring:
+  application:
+    name: search-service
+
+  elasticsearch:
+    uris: ${SPRING_ELASTICSEARCH_URIS:http://localhost:9200}
+
+server:
+  port: 8082
+
+cors:
+  allowed-origins: http://localhost:3000
+
+logging:
+  level:
+    org.springframework.data.elasticsearch: DEBUG
+
+geo:
+  service:
+    url: ${GEO_SERVICE_URL:http://localhost:8085}
+
+embedding:
+  service:
+    url: http://localhost:8000
+
+# LLM actif : Groq (@Primary dans GroqClient). Tier gratuit, sans carte.
+groq:
+  api:
+    key: ${GROQ_API_KEY:}
+  model: ${GROQ_MODEL:llama-3.3-70b-versatile}
+
+# Conservé comme repli (non @Primary). Plus de clé en dur : uniquement via env.
+gemini:
+  api:
+    key: ${GEMINI_API_KEY:}
+  model: ${GEMINI_MODEL:gemini-2.0-flash}
+
+kernel:
+  api:
+    url: ${KERNEL_API_URL:http://localhost:8090}
+    client-id: ${KERNEL_CLIENT_ID:yowyob-search}
+    api-key: ${KERNEL_API_KEY:placeholder-key}
+  jwks-uri: ${KERNEL_JWKS_URI:http://localhost:8090/.well-known/jwks.json}
+  auth:
+    enabled: ${KERNEL_AUTH_ENABLED:false}
+
+yowyob:
+  jwt:
+    secret: ${YOWYOB_JWT_SECRET:yowyob-super-secret-key-change-this-in-production-minimum-256-bits}

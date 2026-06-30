@@ -1,0 +1,145 @@
+server:
+  port: ${PORT:8080}
+
+spring:
+  application:
+    name: api-gateway
+
+  cloud:
+    gateway:
+      default-filters:
+        - DedupeResponseHeader=Access-Control-Allow-Origin Access-Control-Allow-Credentials, RETAIN_UNIQUE
+      globalcors:
+        cors-configurations:
+          "[/**]":
+            allowedOriginPatterns:
+              - "http://localhost:3000"
+              - "https://*.vercel.app"
+              - "https://yowyob.com"
+              - "*"
+            allowedMethods:
+              - GET
+              - POST
+              - PUT
+              - DELETE
+              - OPTIONS
+            allowedHeaders: "*"
+            allowCredentials: true
+
+      routes:
+        # Auth Service Route
+        - id: auth-service
+          uri: ${AUTH_SERVICE_URL:http://auth-service:8081}
+          predicates:
+            - Path=/api/auth/**
+          filters:
+            - JwtAuthenticationFilter
+            - RewritePath=/api/auth/(?<segment>.*), /api/v1/auth/${segment}
+          metadata:
+            response-timeout: 10000
+            connect-timeout: 5000
+
+        # Search Service Route
+        - id: search-service
+          uri: ${SEARCH_SERVICE_URL:http://search-service:8082}
+          predicates:
+            - Path=/api/search/**, /api/search
+          filters:
+            - JwtAuthenticationFilter
+            - RewritePath=/api/search/(?<segment>.*), /api/search/${segment}
+          metadata:
+            response-timeout: 15000
+            connect-timeout: 5000
+
+        # Geo Service Route
+        - id: geo-service
+          uri: ${GEO_SERVICE_URL:http://geo-service:8085}
+          predicates:
+            - Path=/api/geo/**
+          filters:
+            - JwtAuthenticationFilter
+            - RewritePath=/api/geo/(?<segment>.*), /api/geo/${segment}
+
+        # User Service Route
+        - id: user-service
+          uri: ${USER_SERVICE_URL:http://user-service:8084}
+          predicates:
+            - Path=/api/users/**
+          filters:
+            - JwtAuthenticationFilter
+
+        # Listing Service Route
+        - id: listing-service
+          uri: ${LISTING_SERVICE_URL:http://listing-service:8083}
+          predicates:
+            - Path=/api/listings/**
+          filters:
+            - JwtAuthenticationFilter
+
+        # Products Route (alias for listings)
+        - id: products-service
+          uri: ${LISTING_SERVICE_URL:http://listing-service:8083}
+          predicates:
+            - Path=/api/products/**
+          filters:
+            - JwtAuthenticationFilter
+            - RewritePath=/api/products/(?<segment>.*), /api/listings/${segment}
+
+        # Notification Service Route
+        - id: notification-service
+          uri: ${NOTIFICATION_SERVICE_URL:http://notification-service:8087}
+          predicates:
+            - Path=/api/notifications/**
+          filters:
+            - JwtAuthenticationFilter
+
+        # Crawler Service Route
+        - id: crawler-service
+          uri: ${CRAWLER_SERVICE_URL:http://crawler-service:8086}
+          predicates:
+            - Path=/api/crawler/**
+          filters:
+            - JwtAuthenticationFilter
+
+  data:
+    redis:
+      host: ${SPRING_REDIS_HOST:localhost}
+      port: ${SPRING_REDIS_PORT:6379}
+      password: ${SPRING_REDIS_PASSWORD:}
+      ssl:
+        enabled: ${SPRING_REDIS_SSL_ENABLED:true}
+
+jwt:
+  secret: ${JWT_SECRET:yowyob-super-secret-key-change-this-in-production-minimum-256-bits}
+  expiration: 86400000 # 24h
+
+# Management/Actuator Configuration
+management:
+  server:
+    port: ${PORT:8080}
+  endpoints:
+    web:
+      base-path: /management
+      exposure:
+        include: health,info,prometheus,metrics
+  endpoint:
+    health:
+      show-details: always
+    prometheus:
+      enabled: true
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+    tags:
+      application: ${spring.application.name}
+
+management.tracing.enabled: false
+
+logging:
+  level:
+    org.springframework.cloud.gateway: DEBUG
+    org.springframework.http.server.reactive: DEBUG
+    org.springframework.web.reactive: DEBUG
+    com.yowyob.gateway: DEBUG
+    reactor.netty: DEBUG

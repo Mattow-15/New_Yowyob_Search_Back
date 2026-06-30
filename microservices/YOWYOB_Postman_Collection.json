@@ -1,0 +1,306 @@
+{
+  "info": {
+    "_postman_id": "yowyob-api-collection",
+    "name": "YOWYOB API Collection",
+    "description": "Collection complète pour tester les APIs YOWYOB",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "1. AUTH - Login",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"user@example.com\",\n  \"password\": \"password123\"\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/v1/auth/login",
+          "host": ["{{base_url}}"],
+          "path": ["api", "v1", "auth", "login"]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "var jsonData = pm.response.json();",
+              "pm.environment.set(\"auth_token\", jsonData.token);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. SEARCH - Toutes les voitures",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{auth_token}}"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/search?q=voiture&type=VOITURE",
+          "host": ["{{base_url}}"],
+          "path": ["api", "search"],
+          "query": [
+            {
+              "key": "q",
+              "value": "voiture"
+            },
+            {
+              "key": "type",
+              "value": "VOITURE"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "3. SEARCH - Tous les immobiliers",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{auth_token}}"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/search?type=IMMOBILIER",
+          "host": ["{{base_url}}"],
+          "path": ["api", "search"],
+          "query": [
+            {
+              "key": "type",
+              "value": "IMMOBILIER"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "4. SEARCH - Tous les meubles",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{auth_token}}"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/search?type=MEUBLES",
+          "host": ["{{base_url}}"],
+          "path": ["api", "search"],
+          "query": [
+            {
+              "key": "type",
+              "value": "MEUBLES"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "5. SEARCH - Tous les électroniques",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{auth_token}}"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/search?type=ELECTRONIQUE",
+          "host": ["{{base_url}}"],
+          "path": ["api", "search"],
+          "query": [
+            {
+              "key": "type",
+              "value": "ELECTRONIQUE"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "6. SEARCH - Tous les motos",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{auth_token}}"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/search?type=MOTO",
+          "host": ["{{base_url}}"],
+          "path": ["api", "search"],
+          "query": [
+            {
+              "key": "type",
+              "value": "MOTO"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "7. SEARCH - Recherche à Yaoundé",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{auth_token}}"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/search?city=Yaoundé",
+          "host": ["{{base_url}}"],
+          "path": ["api", "search"],
+          "query": [
+            {
+              "key": "city",
+              "value": "Yaoundé"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "8. SEARCH - Recherche à Douala",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{auth_token}}"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/search?city=Douala",
+          "host": ["{{base_url}}"],
+          "path": ["api", "search"],
+          "query": [
+            {
+              "key": "city",
+              "value": "Douala"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "9. SEARCH - Détails d'une annonce [À MODIFIER]",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{auth_token}}"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/search/{listing_id}/details",
+          "host": ["{{base_url}}"],
+          "path": ["api", "search", "{listing_id}", "details"]
+        }
+      },
+      "description": "⚠️ Remplace {listing_id} par un vrai ID d'annonce de la recherche #2"
+    },
+    {
+      "name": "10. LISTING - Créer une annonce",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{auth_token}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"title\": \"MacBook Pro 14 pouces - Neuf 2023\",\n  \"description\": \"Neuf jamais utilisé, boîte scellée d'usine\",\n  \"price\": 850000,\n  \"category\": \"ELECTRONIQUE\",\n  \"address\": \"Yaoundé, Bastos\",\n  \"latitude\": 3.86,\n  \"longitude\": 11.5,\n  \"sellerId\": \"550e8400-e29b-41d4-a716-446655440000\"\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/listings",
+          "host": ["{{base_url}}"],
+          "path": ["api", "listings"]
+        }
+      }
+    },
+    {
+      "name": "11. LISTING - Récupérer une annonce [À MODIFIER]",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{auth_token}}"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/listings/{listing_id}",
+          "host": ["{{base_url}}"],
+          "path": ["api", "listings", "{listing_id}"]
+        }
+      },
+      "description": "⚠️ Remplace {listing_id} par un vrai ID"
+    },
+    {
+      "name": "12. AUTH - Register",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"newuser@example.com\",\n  \"password\": \"securepass123\"\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/v1/auth/register",
+          "host": ["{{base_url}}"],
+          "path": ["api", "v1", "auth", "register"]
+        }
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8080",
+      "type": "string"
+    },
+    {
+      "key": "auth_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "user_id",
+      "value": "550e8400-e29b-41d4-a716-446655440000",
+      "type": "string"
+    }
+  ]
+}

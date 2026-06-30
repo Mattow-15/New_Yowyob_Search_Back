@@ -1,0 +1,112 @@
+package com.yowyob.gateway.filter;
+
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.security.Keys;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.cloud.gateway.filter.GatewayFilter;
+import org.springframework.cloud.gateway.filter.GatewayFilterChain;
+import org.springframework.cloud.gateway.filter.factory.AbstractGatewayFilterFactory;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.server.reactive.ServerHttpRequest;
+import org.springframework.stereotype.Component;
+import org.springframework.web.server.ServerWebExchange;
+import reactor.core.publisher.Mono;
+
+import javax.crypto.SecretKey;
+import java.util.List;
+import java.util.function.Predicate;
+
+@Component
+public class JwtAuthenticationFilter extends AbstractGatewayFilterFactory<JwtAuthenticationFilter.Config> {
+
+    @Value("${jwt.secret}")
+    private String secret;
+
+    public JwtAuthenticationFilter() {
+        super(Config.class);
+    }
+
+    public static class Config {
+        // Configuration parameters if needed
+    }
+
+    @Override
+    public GatewayFilter apply(Config config) {
+        return (exchange, chain) -> {
+            ServerHttpRequest request = exchange.getRequest();
+
+            // 1. Check if route is public
+            if (isPublicRoute.test(request)) {
+                return chain.filter(exchange);
+            }
+
+            // 2. Extract Token
+            String authHeader = request.getHeaders().getFirst(HttpHeaders.AUTHORIZATION);
+            if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+                return onError(exchange, HttpStatus.UNAUTHORIZED);
+            }
+
+            String token = authHeader.substring(7);
+
+            // 3. Validate Token and Extract User ID
+            try {
+                Claims claims = extractAllClaims(token);
+                String userId = claims.getSubject();
+
+                // 4. Inject X-User-Id header for downstream services
+                ServerHttpRequest modifiedRequest = exchange.getRequest()
+                        .mutate()
+                        .header("X-User-Id", userId)
+                        .build();
+
+                return chain.filter(exchange.mutate().request(modifiedRequest).build());
+
+            } catch (Exception e) {
+                return onError(exchange, HttpStatus.UNAUTHORIZED);
+            }
+        };
+    }
+
+    private final Predicate<ServerHttpRequest> isPublicRoute = request -> {
+        List<String> publicEndpoints = List.of(
+                "/api/auth/login",
+                "/api/auth/register",
+                "/api/auth/google",
+                "/api/auth/refresh",
+                "/api/auth/health",
+                "/api/search",
+                "/api/search/health",
+                "/api/geo/health",
+                "/api/geo/geocode",
+                "/api/geo/distance");
+
+        // Public GET endpoints for reading data
+        if (request.getMethod() == HttpMethod.GET) {
+            String path = request.getURI().getPath();
+            if (path.contains("/api/listings") || path.contains("/api/products")) {
+                return true;
+            }
+        }
+
+        return publicEndpoints.stream().anyMatch(uri -> request.getURI().getPath().contains(uri));
+    };
+
+    private Mono<Void> onError(ServerWebExchange exchange, HttpStatus status) {
+        exchange.getResponse().setStatusCode(status);
+        return exchange.getResponse().setComplete();
+    }
+
+    private Claims extractAllClaims(String token) {
+        byte[] keyBytes = secret.getBytes();
+        SecretKey key = Keys.hmacShaKeyFor(keyBytes);
+
+        return Jwts.parser()
+                .verifyWith(key)
+                .build()
+                .parseSignedClaims(token)
+                .getPayload();
+    }
+}

@@ -1,0 +1,12 @@
+spring:
+  elasticsearch:
+    uris: ${SPRING_ELASTICSEARCH_URIS:http://yowyob-elasticsearch:9200}
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME:guest}
+    password: ${RABBITMQ_PASSWORD:guest}
+
+geo:
+  service:
+    url: ${GEO_SERVICE_URL:http://localhost:8085}
