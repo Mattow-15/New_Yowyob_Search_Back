@@ -13,6 +13,7 @@ import com.yowyob.search.geo.IpGeolocationService;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.elasticsearch.client.elc.NativeQuery;
 import org.springframework.data.elasticsearch.client.elc.NativeQueryBuilder;
@@ -35,6 +36,8 @@ import reactor.core.publisher.Mono;
 public class SearchService {
 
     private static final int MAX_SIZE = 100;
+    private static final Set<String> PUBLIC_COLLECTIONS = Set.of(
+            "organization", "agency", "product", "products", "places", "listing", "listings", "services");
 
     private final ReactiveElasticsearchOperations operations;
     private final EmbeddingClient embeddingClient;
@@ -63,6 +66,10 @@ public class SearchService {
 
     /** Recherche complète (lexical + sémantique + proximité). */
     public Flux<SearchDoc> search(SearchQuery request) {
+        if (request.collection() != null && !request.collection().isBlank()
+                && !PUBLIC_COLLECTIONS.contains(request.collection().toLowerCase())) {
+            return Flux.empty();
+        }
         KeywordParser.ParsedQuery parsed = keywordParser.parse(request.rawQuery());
         String text = parsed.query();
         int page = Math.max(request.page(), 0);
@@ -131,6 +138,8 @@ public class SearchService {
                     b.filter(f -> f.term(t -> t.field("tenantId").value(tenantId)));
                     if (collection != null && !collection.isBlank()) {
                         b.filter(f -> f.term(t -> t.field("collection").value(collection)));
+                    } else {
+                        b.filter(publicCollectionFilter());
                     }
                     if (center != null) {
                         b.filter(geoDistanceFilter(center, radiusKm));
@@ -179,11 +188,21 @@ public class SearchService {
         filters.add(Query.of(q -> q.term(t -> t.field("tenantId").value(tenantId))));
         if (collection != null && !collection.isBlank()) {
             filters.add(Query.of(q -> q.term(t -> t.field("collection").value(collection))));
+        } else {
+            filters.add(publicCollectionFilter());
         }
         if (center != null) {
             filters.add(geoDistanceFilter(center, radiusKm));
         }
         return filters;
+    }
+
+    private static Query publicCollectionFilter() {
+        return Query.of(q -> q.bool(b -> {
+            PUBLIC_COLLECTIONS.forEach(collection ->
+                    b.should(s -> s.term(t -> t.field("collection").value(collection))));
+            return b.minimumShouldMatch("1");
+        }));
     }
 
     private static GeoLocation geoLocation(GeoPoint center) {
