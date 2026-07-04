@@ -27,7 +27,8 @@ public record CrawlerProperties(
         String tenantId,
         String collection,
         List<City> cities,
-        List<String> osmTypes) {
+        List<String> osmTypes,
+        String googlePlacesApiKey) {
 
     public CrawlerProperties {
         if (overpassUrl == null || overpassUrl.isBlank()) {
@@ -45,6 +46,7 @@ public record CrawlerProperties(
         if (osmTypes == null || osmTypes.isEmpty()) {
             osmTypes = List.of("restaurant", "pharmacy", "bank", "fuel", "hospital", "hotel");
         }
+        googlePlacesApiKey = googlePlacesApiKey == null ? "" : googlePlacesApiKey.trim();
     }
 
     public record City(String name, double lat, double lng, int radiusMeters) {

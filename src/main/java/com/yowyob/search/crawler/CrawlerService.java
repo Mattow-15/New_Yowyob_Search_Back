@@ -29,11 +29,14 @@ public class CrawlerService {
 
     private final CrawlerProperties properties;
     private final OverpassClient overpassClient;
+    private final GooglePlacesClient googlePlacesClient;
     private final IndexService indexService;
 
-    public CrawlerService(CrawlerProperties properties, OverpassClient overpassClient, IndexService indexService) {
+    public CrawlerService(CrawlerProperties properties, OverpassClient overpassClient,
+            GooglePlacesClient googlePlacesClient, IndexService indexService) {
         this.properties = properties;
         this.overpassClient = overpassClient;
+        this.googlePlacesClient = googlePlacesClient;
         this.indexService = indexService;
     }
 
@@ -53,9 +56,12 @@ public class CrawlerService {
     }
 
     private Mono<Long> crawlCityType(CrawlerProperties.City city, String type) {
-        Flux<Map<String, Object>> documents = overpassClient.fetch(type, city.lat(), city.lng(), city.radiusMeters())
+        Flux<Map<String, Object>> osmDocuments = overpassClient.fetch(type, city.lat(), city.lng(), city.radiusMeters())
                 .map(element -> toDocument(element, city.name(), type))
                 .filter(doc -> doc.get("name") != null && doc.get("latitude") != null);
+        Flux<Map<String, Object>> documents = Flux.concat(
+                osmDocuments,
+                googlePlacesClient.fetch(type, city));
 
         return indexService.indexBulk(properties.tenantId(), properties.collection(), documents)
                 .count()

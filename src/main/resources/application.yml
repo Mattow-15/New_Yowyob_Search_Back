@@ -54,6 +54,12 @@ yowyob:
       k: ${SEARCH_EMBEDDING_K:20}
       num-candidates: ${SEARCH_EMBEDDING_NUM_CANDIDATES:100}
       boost: ${SEARCH_EMBEDDING_BOOST:2.0}
+    ai:
+      enabled: ${SEARCH_AI_ENABLED:true}
+      groq-api-key: ${GROQ_API_KEY:}
+      groq-model: ${GROQ_MODEL:llama-3.3-70b-versatile}
+      gemini-api-key: ${GEMINI_API_KEY:}
+      gemini-model: ${GEMINI_MODEL:gemini-2.0-flash}
     geo:
       # Géolocalisation : géocodage d'adresse (Nominatim/OSM + gazetteer Cameroun intégré) et
       # recherche de proximité (lat/lon, ville, ou « près de moi » via géoloc de l'IP appelante).
@@ -76,6 +82,7 @@ crawler:
   tenant-id: ${CRAWLER_TENANT_ID:}
   collection: ${CRAWLER_COLLECTION:places}
   osm-types: ${CRAWLER_OSM_TYPES:restaurant,pharmacy,bank,fuel,hospital,hotel}
+  google-places-api-key: ${GOOGLE_PLACES_API_KEY:}
   cities:
     - { name: Douala, lat: 4.0511, lng: 9.7679, radiusMeters: 8000 }
     - { name: Yaoundé, lat: 3.8480, lng: 11.5021, radiusMeters: 8000 }

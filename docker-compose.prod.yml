@@ -14,6 +14,15 @@ services:
       KERNEL_BASE_URL: ${KERNEL_BASE_URL:-http://kernel-core-kernel-layer-1:8080}
       # Recherche sémantique : micro-service d'embeddings dédié (repli lexical si indisponible).
       EMBEDDING_SERVICE_URL: http://yowyob-embeddings:8000
+      SEARCH_AI_ENABLED: "true"
+      GROQ_API_KEY: "${GROQ_API_KEY:?GROQ_API_KEY requis}"
+      GROQ_MODEL: "${GROQ_MODEL:-llama-3.3-70b-versatile}"
+      GEMINI_API_KEY: "${GEMINI_API_KEY:-}"
+      GEMINI_MODEL: "${GEMINI_MODEL:-gemini-2.0-flash}"
+      CRAWLER_ENABLED: "true"
+      CRAWLER_TENANT_ID: "${CRAWLER_TENANT_ID:?CRAWLER_TENANT_ID requis}"
+      CRAWLER_SCHEDULE_CRON: "${CRAWLER_SCHEDULE_CRON:-0 15 */6 * * *}"
+      GOOGLE_PLACES_API_KEY: "${GOOGLE_PLACES_API_KEY:-}"
     # La recherche NE dépend PAS de la santé d'embeddings : si l'embeddings est absent/KO,
     # elle démarre quand même et dégrade vers le lexical (cf. EmbeddingClient).
     depends_on:
@@ -27,7 +36,7 @@ services:
       start_period: 60s
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.yowyob-search.rule=Host(`search.yowyob.com`) && (PathPrefix(`/api/search`) || PathPrefix(`/api/geo`) || PathPrefix(`/api/index`) || PathPrefix(`/actuator`) || PathPrefix(`/v3/api-docs`) || PathPrefix(`/swagger-ui`) || PathPrefix(`/webjars`))"
+      - "traefik.http.routers.yowyob-search.rule=Host(`search.yowyob.com`) && (PathPrefix(`/api/search`) || PathPrefix(`/api/geo`) || PathPrefix(`/api/index`) || PathPrefix(`/api/crawler`) || PathPrefix(`/actuator`) || PathPrefix(`/v3/api-docs`) || PathPrefix(`/swagger-ui`) || PathPrefix(`/webjars`))"
       - "traefik.http.routers.yowyob-search.entrypoints=websecure"
       - "traefik.http.routers.yowyob-search.tls=true"
       - "traefik.http.routers.yowyob-search.tls.certresolver=letsencrypt"

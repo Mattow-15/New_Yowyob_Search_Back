@@ -50,11 +50,19 @@ jobs:
       - name: Pull + up sur le serveur
         env:
           SEARCH_IMAGE: ${{ steps.img.outputs.image }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GOOGLE_PLACES_API_KEY: ${{ secrets.GOOGLE_PLACES_API_KEY }}
+          CRAWLER_TENANT_ID: ${{ secrets.CRAWLER_TENANT_ID }}
         run: |
           ssh -i ~/.ssh/id_deploy "${{ vars.DEPLOY_USER }}@${{ vars.DEPLOY_HOST }}" "
             set -e
             cd '${{ vars.SEARCH_DIR }}'
             export SEARCH_IMAGE='${SEARCH_IMAGE}'
+            export GROQ_API_KEY='${GROQ_API_KEY}'
+            export GEMINI_API_KEY='${GEMINI_API_KEY}'
+            export GOOGLE_PLACES_API_KEY='${GOOGLE_PLACES_API_KEY}'
+            export CRAWLER_TENANT_ID='${CRAWLER_TENANT_ID}'
             # Cœur (ES + recherche) : requis, doit toujours monter.
             docker compose -f docker-compose.prod.yml pull yowyob-search
             docker compose -f docker-compose.prod.yml up -d search-elasticsearch yowyob-search

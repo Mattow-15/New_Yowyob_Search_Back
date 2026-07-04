@@ -3,6 +3,7 @@ package com.yowyob.search.api;
 import com.yowyob.search.domain.SearchDoc;
 import com.yowyob.search.service.SearchQuery;
 import com.yowyob.search.service.SearchService;
+import com.yowyob.search.service.AiSearchService;
 import java.util.List;
 import java.util.Map;
 import org.springframework.http.ResponseEntity;
@@ -23,9 +24,42 @@ import reactor.core.publisher.Mono;
 public class SearchController {
 
     private final SearchService searchService;
+    private final AiSearchService aiSearchService;
 
-    public SearchController(SearchService searchService) {
+    public SearchController(SearchService searchService, AiSearchService aiSearchService) {
         this.searchService = searchService;
+        this.aiSearchService = aiSearchService;
+    }
+
+    @GetMapping("/api/search/ai")
+    public Mono<ResponseEntity<AiSearchService.AiResult>> aiSearch(
+            @RequestHeader("X-Tenant-Id") String tenantId,
+            @RequestParam("q") String query,
+            @RequestParam(value = "city", required = false) String city,
+            ServerWebExchange exchange) {
+        return aiSearchService.answer(new SearchQuery(tenantId, query, null, 0, 10,
+                        null, null, null, city, clientIp(exchange)))
+                .map(ResponseEntity::ok);
+    }
+
+    @GetMapping("/api/search/ai-mode")
+    public Mono<ResponseEntity<AiSearchService.AiResult>> aiMode(
+            @RequestHeader("X-Tenant-Id") String tenantId,
+            @RequestParam("q") String query,
+            @RequestParam(value = "city", required = false) String city,
+            ServerWebExchange exchange) {
+        return aiSearch(tenantId, query, city, exchange);
+    }
+
+    @GetMapping("/api/search/faq")
+    public Mono<ResponseEntity<AiSearchService.FaqResult>> faq(
+            @RequestHeader("X-Tenant-Id") String tenantId,
+            @RequestParam("q") String query,
+            @RequestParam(value = "city", required = false) String city,
+            ServerWebExchange exchange) {
+        return aiSearchService.faq(new SearchQuery(tenantId, query, null, 0, 8,
+                        null, null, null, city, clientIp(exchange)))
+                .map(ResponseEntity::ok);
     }
 
     @GetMapping("/api/search")
