@@ -71,6 +71,16 @@ yowyob:
       default-lon: ${GEO_DEFAULT_LON:9.7679}
       default-radius-km: ${GEO_DEFAULT_RADIUS_KM:10.0}
 
+# Consumer Kafka : événements d'organisations publiés par le Kernel.
+# Activé seulement si KAFKA_ORG_ENABLED=true et KAFKA_ORG_TENANT_ID configuré.
+kafka:
+  org:
+    enabled: ${KAFKA_ORG_ENABLED:false}
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:kafka:9092}
+    topic: ${KAFKA_ORG_TOPIC:organization.events}
+    group-id: ${KAFKA_ORG_GROUP_ID:yowyob-search-org-consumer}
+    tenant-id: ${KAFKA_ORG_TENANT_ID:}
+
 # Crawler OpenStreetMap (optionnel, désactivé par défaut). S'il est activé, il indexe directement
 # (sans saut HTTP) des points d'intérêt sous le tenant/collection configurés. crawler.tenant-id est
 # REQUIS quand enabled=true. schedule-cron="-" = pas de crawl automatique (manuel via /api/crawler/run).

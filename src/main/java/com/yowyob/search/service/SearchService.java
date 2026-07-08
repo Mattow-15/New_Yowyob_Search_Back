@@ -144,6 +144,8 @@ public class SearchService {
                     if (center != null) {
                         b.filter(geoDistanceFilter(center, radiusKm));
                     }
+                    // Les organisations Kernel remontent toujours avant les POI OSM
+                    b.should(s -> s.term(t -> t.field("collection").value("organization").boost(10.0f)));
                     if (hasText) {
                         if (vector != null) {
                             // kNN gère la sémantique — le lexical booste le score sans bloquer

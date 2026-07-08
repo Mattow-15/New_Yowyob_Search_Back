@@ -19,6 +19,11 @@ services:
       GROQ_MODEL: "${GROQ_MODEL:-llama-3.3-70b-versatile}"
       GEMINI_API_KEY: "${GEMINI_API_KEY:-}"
       GEMINI_MODEL: "${GEMINI_MODEL:-gemini-2.0-flash}"
+      # Consumer Kafka organisations (désactivé par défaut, activer quand le Kernel publie sur Kafka)
+      KAFKA_ORG_ENABLED: "${KAFKA_ORG_ENABLED:-false}"
+      KAFKA_BOOTSTRAP_SERVERS: "${KAFKA_BOOTSTRAP_SERVERS:-kafka:9092}"
+      KAFKA_ORG_TOPIC: "${KAFKA_ORG_TOPIC:-organization.events}"
+      KAFKA_ORG_TENANT_ID: "${KAFKA_ORG_TENANT_ID:-}"
       CRAWLER_ENABLED: "true"
       CRAWLER_TENANT_ID: "${CRAWLER_TENANT_ID:?CRAWLER_TENANT_ID requis}"
       CRAWLER_SCHEDULE_CRON: "${CRAWLER_SCHEDULE_CRON:-0 15 */6 * * *}"
