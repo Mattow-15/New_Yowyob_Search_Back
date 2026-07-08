@@ -72,6 +72,18 @@ public class KafkaOrganizationConsumer {
         consumerProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
         consumerProps.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false);
 
+        // Sécurité : le broker du Kernel est en SASL_PLAINTEXT / SCRAM. Si un protocole
+        // de sécurité est configuré, on ajoute les propriétés SASL (sinon PLAINTEXT par défaut).
+        if (properties.securityProtocol() != null && !properties.securityProtocol().isBlank()) {
+            consumerProps.put("security.protocol", properties.securityProtocol());
+            if (properties.saslMechanism() != null && !properties.saslMechanism().isBlank()) {
+                consumerProps.put("sasl.mechanism", properties.saslMechanism());
+            }
+            if (properties.saslJaasConfig() != null && !properties.saslJaasConfig().isBlank()) {
+                consumerProps.put("sasl.jaas.config", properties.saslJaasConfig());
+            }
+        }
+
         ReceiverOptions<String, String> options = ReceiverOptions.<String, String>create(consumerProps)
                 .subscription(java.util.List.of(properties.topic()))
                 .commitInterval(Duration.ofSeconds(5))
