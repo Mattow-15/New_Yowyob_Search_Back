@@ -116,11 +116,27 @@ public class KeywordParser {
             if (builder.length() > 0) {
                 builder.append(' ');
             }
-            String expanded = INTENT_SYNONYMS.get(part);
-            builder.append(expanded != null ? expanded : part);
+            String normalized = depluralize(part);
+            String expanded = INTENT_SYNONYMS.get(normalized);
+            builder.append(expanded != null ? expanded : normalized);
         }
         String result = builder.toString().trim();
         return result.isEmpty() ? input.trim() : result;
+    }
+
+    /**
+     * Dé-pluralise un token français normalisé (sans accents, minuscules).
+     * Couvre les cas réguliers (-s, -aux→-al) suffisant pour la recherche.
+     */
+    private static String depluralize(String token) {
+        if (token.length() <= 3) return token;
+        if (token.endsWith("aux") && token.length() > 5) {
+            return token.substring(0, token.length() - 3) + "al";
+        }
+        if (token.endsWith("s")) {
+            return token.substring(0, token.length() - 1);
+        }
+        return token;
     }
 
     /** Ville camerounaise détectée (capitalisée) ou null. */
