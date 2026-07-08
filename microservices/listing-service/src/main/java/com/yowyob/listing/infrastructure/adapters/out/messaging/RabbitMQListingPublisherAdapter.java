@@ -71,6 +71,7 @@ public class RabbitMQListingPublisherAdapter implements ListingEventPublisherPor
                 .reviewsCount(listing.getReviewsCount())
                 .status(listing.getStatus() != null ? listing.getStatus().name() : null)
                 .sellerId(listing.getSellerId())
+                .source(listing.getSource())
                 .eventType(eventType)
                 .build();
     }

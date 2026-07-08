@@ -51,6 +51,9 @@ public class Listing {
 
     private ListingStatus status;
 
+    /** Origine de la donnée : KERNEL_ORG, OSM, GOOGLE_PLACES, BUSINESS_BOOK, etc. */
+    private String source;
+
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

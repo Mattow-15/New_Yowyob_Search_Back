@@ -33,4 +33,7 @@ public class ListingEvent implements Serializable {
     private String openingHours;
     private Double rating;
     private Integer reviewsCount;
+
+    /** Origine : KERNEL_ORG, OSM, GOOGLE_PLACES, BUSINESS_BOOK, etc. */
+    private String source;
 }

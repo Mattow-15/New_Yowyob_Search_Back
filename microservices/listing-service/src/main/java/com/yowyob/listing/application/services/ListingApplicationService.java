@@ -70,6 +70,7 @@ public class ListingApplicationService
                     .openingHours(incomingListing.getOpeningHours())
                     .rating(incomingListing.getRating())
                     .reviewsCount(incomingListing.getReviewsCount())
+                    .source(incomingListing.getSource())
                     .updatedAt(LocalDateTime.now())
                     .build();
             isNew = false;

@@ -60,6 +60,7 @@ public class CrawlerListingKafkaAdapter {
                     .reviewsCount(req.getReviewCount())
                     .status(ListingStatus.ACTIVE)
                     .sellerId(SYSTEM_CRAWLER_SELLER)
+                    .source(req.getSource())
                     .build();
 
             // Délégation au domaine — toute la logique d'upsert est là-bas
