@@ -10,8 +10,10 @@ Le service est volontairement minimal et sans état : un seul modèle chargé au
 deux endpoints (`/health`, `/embed`). Tout échec côté yowyob-search est dégradé en
 recherche lexicale (edge-ngram) — l'embeddings n'est donc jamais un point de panne dur.
 """
+import asyncio
 import logging
 from contextlib import asynccontextmanager
+from concurrent.futures import ThreadPoolExecutor
 
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
@@ -20,18 +22,27 @@ from sentence_transformers import SentenceTransformer
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
-# Modèle multilingue (FR/EN) compact : 384 dimensions. DOIT correspondre à `dims` du
-# champ `text_vector` côté Elasticsearch (cf. SearchDoc) et à yowyob.search.embedding.dimensions.
 MODEL_NAME = "paraphrase-multilingual-MiniLM-L12-v2"
 model: SentenceTransformer | None = None
+_executor = ThreadPoolExecutor(max_workers=2)
+
+
+def _load_and_warm(name: str) -> SentenceTransformer:
+    """Charge le modèle et exécute un appel de warmup pour JIT-compiler torch."""
+    logger.info("Chargement du modèle %s ...", name)
+    m = SentenceTransformer(name)
+    logger.info("Modèle chargé — warmup JIT en cours ...")
+    m.encode("warmup")
+    logger.info("Modèle prêt (dims=%s).", m.get_sentence_embedding_dimension())
+    return m
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global model
-    logger.info("Chargement du modèle d'embeddings: %s ...", MODEL_NAME)
-    model = SentenceTransformer(MODEL_NAME)
-    logger.info("Modèle chargé (dimensions=%s).", model.get_sentence_embedding_dimension())
+    loop = asyncio.get_event_loop()
+    # Chargement + warmup dans un thread séparé pour ne pas bloquer l'event loop
+    model = await loop.run_in_executor(_executor, _load_and_warm, MODEL_NAME)
     yield
     logger.info("Arrêt du service d'embeddings.")
 
@@ -67,8 +78,9 @@ async def generate_embedding(request: EmbedRequest):
     if not request.text or not request.text.strip():
         raise HTTPException(status_code=400, detail="Le texte ne peut pas être vide.")
     try:
-        vector = model.encode(request.text.strip()).tolist()
+        loop = asyncio.get_event_loop()
+        vector = await loop.run_in_executor(_executor, lambda: model.encode(request.text.strip()).tolist())
         return EmbedResponse(vector=vector, dimensions=len(vector))
-    except Exception as exc:  # noqa: BLE001 — on remonte une 500 explicite au client
+    except Exception as exc:  # noqa: BLE001
         logger.error("Erreur de génération d'embedding: %s", exc)
         raise HTTPException(status_code=500, detail=str(exc)) from exc
