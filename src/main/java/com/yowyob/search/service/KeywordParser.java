@@ -3,8 +3,10 @@ package com.yowyob.search.service;
 import java.text.Normalizer;
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import java.util.regex.Pattern;
 import org.springframework.stereotype.Component;
@@ -31,6 +33,59 @@ public class KeywordParser {
             "se", "sa", "son", "ses", "mon", "ma", "mes", "want", "wanting", "near", "around",
             "pres", "proche", "autour", "loin", "tres", "moi"));
 
+    /**
+     * Intentions courantes → termes de recherche ES.
+     * Permet de trouver des résultats même quand la requête ne contient aucun mot-clé littéral
+     * présent dans les titres/catégories indexées (ex. "manger" → "restaurant").
+     */
+    private static final Map<String, String> INTENT_SYNONYMS = new LinkedHashMap<>();
+    static {
+        // Nourriture
+        INTENT_SYNONYMS.put("manger", "restaurant");
+        INTENT_SYNONYMS.put("faim", "restaurant");
+        INTENT_SYNONYMS.put("dejeuner", "restaurant");
+        INTENT_SYNONYMS.put("diner", "restaurant");
+        INTENT_SYNONYMS.put("grignoter", "restaurant snack");
+        INTENT_SYNONYMS.put("nourriture", "restaurant");
+        INTENT_SYNONYMS.put("repas", "restaurant");
+        INTENT_SYNONYMS.put("miam", "restaurant");
+        // Boissons
+        INTENT_SYNONYMS.put("boire", "bar");
+        INTENT_SYNONYMS.put("soif", "bar");
+        INTENT_SYNONYMS.put("biere", "bar");
+        INTENT_SYNONYMS.put("boisson", "bar");
+        // Sport
+        INTENT_SYNONYMS.put("foot", "football terrain stade");
+        INTENT_SYNONYMS.put("football", "football terrain stade");
+        INTENT_SYNONYMS.put("jouer", "terrain sport");
+        INTENT_SYNONYMS.put("sport", "terrain stade sport");
+        INTENT_SYNONYMS.put("gym", "salle sport fitness");
+        INTENT_SYNONYMS.put("fitness", "salle sport gym");
+        // Santé
+        INTENT_SYNONYMS.put("medicament", "pharmacie");
+        INTENT_SYNONYMS.put("ordonnance", "pharmacie");
+        INTENT_SYNONYMS.put("malade", "clinique hopital");
+        INTENT_SYNONYMS.put("soin", "clinique hopital");
+        INTENT_SYNONYMS.put("docteur", "clinique hopital medecin");
+        INTENT_SYNONYMS.put("medecin", "clinique hopital");
+        // Argent / banque
+        INTENT_SYNONYMS.put("argent", "banque atm distributeur");
+        INTENT_SYNONYMS.put("retirer", "atm distributeur banque");
+        INTENT_SYNONYMS.put("transfert", "banque mobile money");
+        // Commerce
+        INTENT_SYNONYMS.put("acheter", "magasin marche boutique");
+        INTENT_SYNONYMS.put("courses", "supermarche marche");
+        INTENT_SYNONYMS.put("shopping", "boutique magasin centre commercial");
+        // Carburant / transport
+        INTENT_SYNONYMS.put("essence", "station service carburant");
+        INTENT_SYNONYMS.put("carburant", "station service essence");
+        INTENT_SYNONYMS.put("taxi", "taxi transport");
+        // Hébergement
+        INTENT_SYNONYMS.put("dormir", "hotel");
+        INTENT_SYNONYMS.put("nuit", "hotel");
+        INTENT_SYNONYMS.put("loger", "hotel");
+    }
+
     private static final Set<String> CITIES = new HashSet<>(Arrays.asList(
             "douala", "yaounde", "buea", "bafoussam", "bamenda", "garoua", "maroua",
             "limbe", "tiko", "kumba", "ngaoundere", "bertoua", "ebolowa",
@@ -47,7 +102,7 @@ public class KeywordParser {
         return new ParsedQuery(cleanedQuery, city, radius, radius != null);
     }
 
-    /** Requête débarrassée des stopwords, villes et mots de proximité. */
+    /** Requête débarrassée des stopwords/villes, avec expansion des intentions courantes. */
     public String buildQuery(String input) {
         if (input == null) {
             return "";
@@ -61,7 +116,8 @@ public class KeywordParser {
             if (builder.length() > 0) {
                 builder.append(' ');
             }
-            builder.append(part);
+            String expanded = INTENT_SYNONYMS.get(part);
+            builder.append(expanded != null ? expanded : part);
         }
         String result = builder.toString().trim();
         return result.isEmpty() ? input.trim() : result;
