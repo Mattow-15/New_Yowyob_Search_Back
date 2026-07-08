@@ -145,12 +145,19 @@ public class SearchService {
                         b.filter(geoDistanceFilter(center, radiusKm));
                     }
                     if (hasText) {
-                        b.must(m -> m.bool(inner -> {
-                            inner.should(s -> s.match(mm -> mm.field("title").query(text).boost(2.0f)));
-                            inner.should(s -> s.match(mm -> mm.field("content").query(text)));
-                            inner.minimumShouldMatch("1");
-                            return inner;
-                        }));
+                        if (vector != null) {
+                            // kNN gère la sémantique — le lexical booste le score sans bloquer
+                            b.should(s -> s.match(mm -> mm.field("title").query(text).boost(3.0f)));
+                            b.should(s -> s.match(mm -> mm.field("content").query(text).boost(1.0f)));
+                        } else {
+                            // Pas de vecteur : le lexical doit obligatoirement matcher
+                            b.must(m -> m.bool(inner -> {
+                                inner.should(s -> s.match(mm -> mm.field("title").query(text).boost(2.0f)));
+                                inner.should(s -> s.match(mm -> mm.field("content").query(text)));
+                                inner.minimumShouldMatch("1");
+                                return inner;
+                            }));
+                        }
                     } else {
                         b.must(m -> m.matchAll(ma -> ma));
                     }
