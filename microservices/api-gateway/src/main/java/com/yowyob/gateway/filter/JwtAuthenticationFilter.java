@@ -37,7 +37,7 @@ public class JwtAuthenticationFilter extends AbstractGatewayFilterFactory<JwtAut
     }
 
     private NimbusJwtDecoder kernelDecoder() {
-        if (kernelDecoder == null && kernelJwksUri != null && !kernelJwksUri.isBlank()) {
+        if (kernelDecoder == null && kernelJwksUri != null && kernelJwksUri.startsWith("http")) {
             synchronized (this) {
                 if (kernelDecoder == null) {
                     kernelDecoder = NimbusJwtDecoder.withJwkSetUri(kernelJwksUri).build();
