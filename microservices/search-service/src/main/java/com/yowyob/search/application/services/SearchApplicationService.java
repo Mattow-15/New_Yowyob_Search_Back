@@ -102,7 +102,7 @@ public class SearchApplicationService implements SearchUseCase, ManageSearchHist
             knn.getResults().forEach(sr -> seen.putIfAbsent(sr.getProduct().getId(), sr));
         }
 
-        List<SearchResult> merged = prioritizeOfficial(new ArrayList<>(seen.values()));
+        List<SearchResult> merged = rankResults(new ArrayList<>(seen.values()));
 
         return SearchQueryResult.builder()
                 .success(true)
@@ -112,15 +112,26 @@ public class SearchApplicationService implements SearchUseCase, ManageSearchHist
                 .build();
     }
 
-    private List<SearchResult> prioritizeOfficial(List<SearchResult> results) {
+    /**
+     * Tri canonique : 1) KERNEL_ORG en tête  2) plus proche d'abord  3) le reste tel quel.
+     * Appliqué à toutes les méthodes de recherche pour garantir un ordre cohérent.
+     */
+    private List<SearchResult> rankResults(List<SearchResult> results) {
         if (results == null || results.size() < 2) return results;
         List<SearchResult> ordered = new ArrayList<>(results);
-        ordered.sort((a, b) -> rankOfficial(a) - rankOfficial(b));
+        ordered.sort((a, b) -> {
+            int srcA = isKernelOrg(a) ? 0 : 1;
+            int srcB = isKernelOrg(b) ? 0 : 1;
+            if (srcA != srcB) return srcA - srcB;
+            Double distA = a.getDistanceKm() != null ? a.getDistanceKm() : Double.MAX_VALUE;
+            Double distB = b.getDistanceKm() != null ? b.getDistanceKm() : Double.MAX_VALUE;
+            return Double.compare(distA, distB);
+        });
         return ordered;
     }
 
-    private int rankOfficial(SearchResult sr) {
-        return "KERNEL_ORG".equals(sr.getProduct().getSource()) ? 0 : 1;
+    private boolean isKernelOrg(SearchResult sr) {
+        return sr.getProduct() != null && "KERNEL_ORG".equals(sr.getProduct().getSource());
     }
 
     private Mono<SearchQueryResult> executeStandardSearch(KeywordParser.ParsedQueryResult parsed,
@@ -162,7 +173,7 @@ public class SearchApplicationService implements SearchUseCase, ManageSearchHist
                 .map(p -> new SearchResult(p, null))
                 .collectList()
                 .map(results -> {
-                    List<SearchResult> ordered = prioritizeOfficial(results);
+                    List<SearchResult> ordered = rankResults(results);
                     return SearchQueryResult.builder()
                             .success(true)
                             .query(parsedQueryFinal)
@@ -220,16 +231,12 @@ public class SearchApplicationService implements SearchUseCase, ManageSearchHist
                 })
                 .collectList()
                 .map(results -> {
-                    results.sort((a, b) -> {
-                        Double distA = a.getDistanceKm() != null ? a.getDistanceKm() : Double.MAX_VALUE;
-                        Double distB = b.getDistanceKm() != null ? b.getDistanceKm() : Double.MAX_VALUE;
-                        return Double.compare(distA, distB);
-                    });
+                    List<SearchResult> ranked = rankResults(results);
                     return SearchQueryResult.builder()
                             .success(true)
                             .query(query)
-                            .total(results.size())
-                            .results(results)
+                            .total(ranked.size())
+                            .results(ranked)
                             .build();
                 });
     }
@@ -249,12 +256,15 @@ public class SearchApplicationService implements SearchUseCase, ManageSearchHist
                                 return new SearchResult(doc, distance);
                             })
                             .collectList()
-                            .map(results -> SearchQueryResult.builder()
-                                    .success(true)
-                                    .query(query)
-                                    .total(results.size())
-                                    .results(results)
-                                    .build());
+                            .map(results -> {
+                                List<SearchResult> ranked = rankResults(results);
+                                return SearchQueryResult.builder()
+                                        .success(true)
+                                        .query(query)
+                                        .total(ranked.size())
+                                        .results(ranked)
+                                        .build();
+                            });
                 })
                 .switchIfEmpty(Mono.just(SearchQueryResult.builder().success(false).query(query).total(0).build()));
     }
