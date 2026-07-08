@@ -141,6 +141,8 @@ public class SearchService {
                     } else {
                         b.filter(publicCollectionFilter());
                     }
+                    // N'afficher que les docs qui ont un titre indexé (exclut les orgs vides)
+                    b.filter(f -> f.exists(e -> e.field("title")));
                     if (center != null) {
                         b.filter(geoDistanceFilter(center, radiusKm));
                     }

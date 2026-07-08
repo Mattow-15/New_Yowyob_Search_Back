@@ -128,6 +128,13 @@ public class KafkaOrganizationConsumer {
                     .then();
         }
 
+        // Ne pas indexer les orgs sans nom — elles pollueraient les résultats de recherche
+        Object name = data.get("name");
+        if (name == null || String.valueOf(name).isBlank()) {
+            LOGGER.debug("Org {} ignorée : pas de nom", id);
+            return Mono.empty();
+        }
+
         Map<String, Object> doc = toIndexDocument(data);
         return indexService.index(properties.tenantId(), COLLECTION, id, doc)
                 .doOnSuccess(v -> LOGGER.info("Org indexée [{}] : {}", eventType, data.get("name")))
