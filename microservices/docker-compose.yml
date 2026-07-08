@@ -87,13 +87,17 @@ services:
       - SPRING_DATASOURCE_PASSWORD=postgres
       - SPRING_REDIS_HOST=redis
       - SPRING_REDIS_PORT=6379
-      - JWT_SECRET=your-super-secret-jwt-key-change-in-production
+      - JWT_SECRET=yowyob-super-secret-key-change-this-in-production-minimum-256-bits
       - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:9092
       - SPRING_KAFKA_CONSUMER_PROPERTIES_SPRING_JSON_TRUSTED_PACKAGES=*
       - SPRING_KAFKA_CONSUMER_PROPERTIES_SPRING_JSON_USE_TYPE_HEADERS=false
       - SPRING_KAFKA_CONSUMER_PROPERTIES_SPRING_JSON_VALUE_DEFAULT_TYPE=com.yowyob.auth.event.UserCreatedEvent
       - SEARCH_SERVICE_URL=http://host.docker.internal:8082
       - CRAWLER_SERVICE_URL=http://host.docker.internal:8086
+      # Kernel auth
+      - KERNEL_BASE_URL=${KERNEL_BASE_URL:-}
+      - AUTH_SERVICE_URL=${KERNEL_BASE_URL:-http://auth-service:8081}
+      - KERNEL_JWKS_URI=${KERNEL_BASE_URL:-}/.well-known/jwks.json
     depends_on:
       postgres:
         condition: service_healthy
@@ -121,7 +125,7 @@ services:
       - SPRING_DATASOURCE_PASSWORD=postgres
       - SPRING_REDIS_HOST=redis
       - SPRING_REDIS_PORT=6379
-      - JWT_SECRET=your-super-secret-jwt-key-change-in-production
+      - JWT_SECRET=yowyob-super-secret-key-change-this-in-production-minimum-256-bits
       - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:9092
       - SPRING_KAFKA_CONSUMER_PROPERTIES_SPRING_JSON_TRUSTED_PACKAGES=*
       - SPRING_KAFKA_CONSUMER_PROPERTIES_SPRING_JSON_USE_TYPE_HEADERS=false
@@ -157,8 +161,13 @@ services:
       - GROQ_API_KEY=${GROQ_API_KEY}
       - GEMINI_API_KEY=${GEMINI_API_KEY}
       - GOOGLE_PLACES_API_KEY=${GOOGLE_PLACES_API_KEY}
-      - YOWYOB_JWT_SECRET=your-super-secret-jwt-key-change-in-production
-      - KERNEL_AUTH_ENABLED=false
+      - YOWYOB_JWT_SECRET=yowyob-super-secret-key-change-this-in-production-minimum-256-bits
+      - KERNEL_AUTH_ENABLED=true
+      - KERNEL_API_URL=${KERNEL_BASE_URL:-http://localhost:8090}
+      - KERNEL_JWKS_URI=${KERNEL_BASE_URL:-http://localhost:8090}/.well-known/jwks.json
+      - KERNEL_CLIENT_ID=yowyob-search
+      - KERNEL_API_KEY=tpJCInDkFJXogZRDaOpduqWsq0dUgu4vGcIdcq20usPw_Gp7
+      - KERNEL_TENANT_ID=11111111-1111-1111-1111-111111111111
     depends_on:
       redis:
         condition: service_started

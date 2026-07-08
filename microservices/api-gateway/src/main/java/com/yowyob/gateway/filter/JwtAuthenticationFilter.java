@@ -11,6 +11,8 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.server.reactive.ServerHttpRequest;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
@@ -25,8 +27,43 @@ public class JwtAuthenticationFilter extends AbstractGatewayFilterFactory<JwtAut
     @Value("${jwt.secret}")
     private String secret;
 
+    @Value("${kernel.jwks-uri:}")
+    private String kernelJwksUri;
+
+    private volatile NimbusJwtDecoder kernelDecoder;
+
     public JwtAuthenticationFilter() {
         super(Config.class);
+    }
+
+    private NimbusJwtDecoder kernelDecoder() {
+        if (kernelDecoder == null && kernelJwksUri != null && !kernelJwksUri.isBlank()) {
+            synchronized (this) {
+                if (kernelDecoder == null) {
+                    kernelDecoder = NimbusJwtDecoder.withJwkSetUri(kernelJwksUri).build();
+                }
+            }
+        }
+        return kernelDecoder;
+    }
+
+    private String extractUserId(String token) {
+        // 1. Essai Kernel (RS256 via JWKS)
+        NimbusJwtDecoder decoder = kernelDecoder();
+        if (decoder != null) {
+            try {
+                Jwt jwt = decoder.decode(token);
+                return jwt.getSubject();
+            } catch (Exception ignored) {
+                // Kernel indisponible ou token local → fallback
+            }
+        }
+        // 2. Fallback local HS256
+        try {
+            return extractAllClaims(token).getSubject();
+        } catch (Exception ignored) {
+            return null;
+        }
     }
 
     public static class Config {
@@ -40,10 +77,8 @@ public class JwtAuthenticationFilter extends AbstractGatewayFilterFactory<JwtAut
             String authHeader = request.getHeaders().getFirst(HttpHeaders.AUTHORIZATION);
             String path = request.getURI().getPath();
 
-            // Log request for debugging
             System.out.println("Processing request: " + request.getMethod() + " " + path);
 
-            // 1. If no token provided
             if (authHeader == null || !authHeader.startsWith("Bearer ")) {
                 if (isPublicRoute.test(request)) {
                     System.out.println("Public route accessed without token: " + path);
@@ -54,37 +89,23 @@ public class JwtAuthenticationFilter extends AbstractGatewayFilterFactory<JwtAut
                 }
             }
 
-            // 2. Token provided: try to validate it
             String token = authHeader.substring(7);
-            try {
-                Claims claims = extractAllClaims(token);
-                String userId = claims.getSubject();
+            String userId = extractUserId(token);
 
-                if (userId == null) {
-                    System.out.println("Token validation failed: User ID is null in claims");
-                    return onError(exchange, HttpStatus.UNAUTHORIZED);
-                }
-
-                System.out.println("Token valid. User ID: " + userId);
-
-                // Inject X-User-Id header for downstream services
-                ServerHttpRequest modifiedRequest = exchange.getRequest()
-                        .mutate()
-                        .header("X-User-Id", userId)
-                        .build();
-
-                return chain.filter(exchange.mutate().request(modifiedRequest).build());
-
-            } catch (Exception e) {
-                System.out.println("Token validation error: " + e.getMessage());
-                // Invalid token provided
+            if (userId == null) {
                 if (isPublicRoute.test(request)) {
-                    System.out.println("Public route accessed with invalid token (fallback): " + path);
                     return chain.filter(exchange);
                 } else {
                     return onError(exchange, HttpStatus.UNAUTHORIZED);
                 }
             }
+
+            ServerHttpRequest modifiedRequest = exchange.getRequest()
+                    .mutate()
+                    .header("X-User-Id", userId)
+                    .build();
+
+            return chain.filter(exchange.mutate().request(modifiedRequest).build());
         };
     }
 
@@ -105,10 +126,9 @@ public class JwtAuthenticationFilter extends AbstractGatewayFilterFactory<JwtAut
                 "/api/geo/ip-location",
                 "/api/crawler");
 
-        // Public GET endpoints for reading data
         if (request.getMethod() == HttpMethod.GET) {
             String path = request.getURI().getPath();
-            if (path.contains("/api/listings") || path.contains("/api/products") || path.contains("/api/products")) {
+            if (path.contains("/api/listings") || path.contains("/api/products")) {
                 return true;
             }
         }

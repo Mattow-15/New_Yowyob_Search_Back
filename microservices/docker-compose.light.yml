@@ -125,7 +125,7 @@ services:
       - SPRING_DATASOURCE_PASSWORD=postgres
       - SPRING_REDIS_HOST=redis
       - SPRING_REDIS_PORT=6379
-      - JWT_SECRET=your-super-secret-jwt-key-change-in-production
+      - JWT_SECRET=yowyob-super-secret-key-change-this-in-production-minimum-256-bits
       # Kafka désactivé (mode light)
       - SPRING_AUTOCONFIGURE_EXCLUDE=org.springframework.boot.autoconfigure.kafka.KafkaAutoConfiguration
     depends_on:
@@ -248,8 +248,12 @@ services:
       - SPRING_DATASOURCE_PASSWORD=postgres
       - SPRING_REDIS_HOST=redis
       - SPRING_REDIS_PORT=6379
-      - JWT_SECRET=your-super-secret-jwt-key-change-in-production
+      - JWT_SECRET=yowyob-super-secret-key-change-this-in-production-minimum-256-bits
       - SPRING_AUTOCONFIGURE_EXCLUDE=org.springframework.boot.autoconfigure.kafka.KafkaAutoConfiguration
+      # Auth déléguée au Kernel (fallback auth-service local si KERNEL_BASE_URL absent)
+      - KERNEL_BASE_URL=${KERNEL_BASE_URL:-}
+      - AUTH_SERVICE_URL=${KERNEL_BASE_URL:-http://auth-service:8081}
+      - KERNEL_JWKS_URI=${KERNEL_BASE_URL:-}/.well-known/jwks.json
     depends_on:
       postgres:
         condition: service_healthy

@@ -113,6 +113,10 @@ jwt:
   secret: ${JWT_SECRET:yowyob-super-secret-key-change-this-in-production-minimum-256-bits}
   expiration: 86400000 # 24h
 
+kernel:
+  base-url: ${KERNEL_BASE_URL:}
+  jwks-uri: ${KERNEL_JWKS_URI:}
+
 # Management/Actuator Configuration
 management:
   server:
