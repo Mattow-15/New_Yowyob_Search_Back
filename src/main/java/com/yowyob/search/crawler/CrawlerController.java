@@ -25,7 +25,9 @@ public class CrawlerController {
 
     @PostMapping("/run")
     public Mono<ResponseEntity<Map<String, Object>>> run() {
-        return crawlerService.crawl()
-                .map(count -> ResponseEntity.ok(Map.of("status", "ok", "indexed", count)));
+        // Lance le crawl en arrière-plan et répond immédiatement (peut durer plusieurs minutes)
+        crawlerService.crawl().subscribe();
+        return Mono.just(ResponseEntity.accepted()
+                .body(Map.of("status", "started", "message", "Crawl lancé en arrière-plan")));
     }
 }
