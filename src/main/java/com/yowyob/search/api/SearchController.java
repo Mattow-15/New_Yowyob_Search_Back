@@ -1,6 +1,7 @@
 package com.yowyob.search.api;
 
 import com.yowyob.search.domain.SearchDoc;
+import com.yowyob.search.repository.SearchDocRepository;
 import com.yowyob.search.service.SearchQuery;
 import com.yowyob.search.service.SearchService;
 import com.yowyob.search.service.AiSearchService;
@@ -8,6 +9,7 @@ import java.util.List;
 import java.util.Map;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -25,10 +27,13 @@ public class SearchController {
 
     private final SearchService searchService;
     private final AiSearchService aiSearchService;
+    private final SearchDocRepository repository;
 
-    public SearchController(SearchService searchService, AiSearchService aiSearchService) {
+    public SearchController(SearchService searchService, AiSearchService aiSearchService,
+            SearchDocRepository repository) {
         this.searchService = searchService;
         this.aiSearchService = aiSearchService;
+        this.repository = repository;
     }
 
     @GetMapping("/api/search/ai")
@@ -60,6 +65,21 @@ public class SearchController {
         return aiSearchService.faq(new SearchQuery(tenantId, query, null, 0, 8,
                         null, null, null, city, clientIp(exchange)))
                 .map(ResponseEntity::ok);
+    }
+
+    @GetMapping("/api/search/{externalId}/details")
+    public Mono<ResponseEntity<Object>> details(
+            @RequestHeader("X-Tenant-Id") String tenantId,
+            @PathVariable String externalId) {
+        // L'ES doc ID = tenantId:collection:externalId — on tente les collections publiques connues
+        return repository.findAllById(List.of(
+                        SearchDoc.documentId(tenantId, "places", externalId),
+                        SearchDoc.documentId(tenantId, "organization", externalId),
+                        SearchDoc.documentId(tenantId, "products", externalId),
+                        SearchDoc.documentId(tenantId, "services", externalId)))
+                .next()
+                .map(doc -> ResponseEntity.ok((Object) (doc.source() != null ? doc.source() : Map.of())))
+                .switchIfEmpty(Mono.just(ResponseEntity.notFound().build()));
     }
 
     @GetMapping("/api/search")
