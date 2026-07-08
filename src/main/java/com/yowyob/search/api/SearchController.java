@@ -82,6 +82,44 @@ public class SearchController {
                 .switchIfEmpty(Mono.just(ResponseEntity.notFound().build()));
     }
 
+    /** Alias géo : le front envoie latitude/longitude/radius (km), on mappe vers /api/search. */
+    @GetMapping("/api/search/near-me")
+    public Mono<ResponseEntity<SearchResponse>> nearMe(
+            @RequestHeader("X-Tenant-Id") String tenantId,
+            @RequestParam(value = "q", defaultValue = "") String query,
+            @RequestParam(value = "latitude") Double latitude,
+            @RequestParam(value = "longitude") Double longitude,
+            @RequestParam(value = "radius", defaultValue = "10") Double radius,
+            @RequestParam(value = "page", defaultValue = "0") int page,
+            @RequestParam(value = "size", defaultValue = "20") int size,
+            ServerWebExchange exchange) {
+        SearchQuery request = new SearchQuery(tenantId, query, null, page, size,
+                latitude, longitude, radius, null, clientIp(exchange));
+        return searchService.search(request)
+                .map(SearchController::toHit)
+                .collectList()
+                .map(hits -> ResponseEntity.ok(new SearchResponse(hits.size(), hits)));
+    }
+
+    /** Autocomplétion : retourne les titres qui préfixent la saisie (edge-ngram). */
+    @GetMapping("/api/search/autocomplete")
+    public Mono<ResponseEntity<List<String>>> autocomplete(
+            @RequestHeader("X-Tenant-Id") String tenantId,
+            @RequestParam("q") String query,
+            @RequestParam(value = "size", defaultValue = "8") int size) {
+        if (query == null || query.isBlank()) {
+            return Mono.just(ResponseEntity.ok(List.of()));
+        }
+        SearchQuery request = new SearchQuery(tenantId, query, null, 0, size,
+                null, null, null, null, null);
+        return searchService.search(request)
+                .map(doc -> doc.title() != null ? doc.title() : "")
+                .filter(t -> !t.isBlank())
+                .distinct()
+                .collectList()
+                .map(ResponseEntity::ok);
+    }
+
     @GetMapping("/api/search")
     public Mono<ResponseEntity<SearchResponse>> search(
             @RequestHeader("X-Tenant-Id") String tenantId,
