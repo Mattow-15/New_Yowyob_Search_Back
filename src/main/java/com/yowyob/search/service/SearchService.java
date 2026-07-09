@@ -85,8 +85,33 @@ public class SearchService {
                         .flatMapMany(vectorOpt -> {
                             NativeQuery query = buildQuery(request, text, centerOpt.orElse(null),
                                     vectorOpt.orElse(null), radiusKm, page, size);
-                            return operations.search(query, SearchDoc.class).map(SearchHit::getContent);
+                            return operations.search(query, SearchDoc.class)
+                                    .map(SearchHit::getContent)
+                                    .switchIfEmpty(kernelOrgFallback(request, centerOpt.orElse(null), size));
                         }));
+    }
+
+    /**
+     * Fallback : si la recherche principale ne retourne aucun résultat, on propose
+     * les organisations Kernel disponibles (pertinentes par proximité si géo disponible).
+     */
+    private Flux<SearchDoc> kernelOrgFallback(SearchQuery request, GeoPoint center, int size) {
+        NativeQueryBuilder builder = NativeQuery.builder()
+                .withQuery(q -> q.bool(b -> {
+                    b.filter(f -> f.term(t -> t.field("tenantId").value(request.tenantId())));
+                    b.filter(f -> f.term(t -> t.field("collection").value("organization")));
+                    b.filter(f -> f.exists(e -> e.field("title")));
+                    b.must(m -> m.matchAll(ma -> ma));
+                    return b;
+                }))
+                .withPageable(PageRequest.of(0, size));
+        if (center != null) {
+            builder.withSort(s -> s.geoDistance(gd -> gd
+                    .field("location")
+                    .location(geoLocation(center))
+                    .order(SortOrder.Asc)));
+        }
+        return operations.search(builder.build(), SearchDoc.class).map(SearchHit::getContent);
     }
 
     // -------------------------------------------------------------------------
