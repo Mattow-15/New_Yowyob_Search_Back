@@ -146,24 +146,20 @@ public class SearchService {
                     if (center != null) {
                         b.filter(geoDistanceFilter(center, radiusKm));
                     }
-                    // Les organisations Kernel remontent toujours avant les POI OSM
-                    b.should(s -> s.term(t -> t.field("collection").value("organization").boost(10.0f)));
                     if (hasText) {
-                        if (vector != null) {
-                            // kNN gère la sémantique — le lexical booste le score sans bloquer
-                            b.should(s -> s.match(mm -> mm.field("title").query(text).boost(3.0f)));
-                            b.should(s -> s.match(mm -> mm.field("content").query(text).boost(1.0f)));
-                        } else {
-                            // Pas de vecteur : le lexical doit obligatoirement matcher
-                            b.must(m -> m.bool(inner -> {
-                                inner.should(s -> s.match(mm -> mm.field("title").query(text).boost(2.0f)));
-                                inner.should(s -> s.match(mm -> mm.field("content").query(text)));
-                                inner.minimumShouldMatch("1");
-                                return inner;
-                            }));
-                        }
+                        // Le texte doit toujours matcher (que kNN soit actif ou non).
+                        // kNN sert au reranking, pas à trouver des résultats hors-sujet.
+                        b.must(m -> m.bool(inner -> {
+                            inner.should(s -> s.match(mm -> mm.field("title").query(text).boost(4.0f)));
+                            inner.should(s -> s.match(mm -> mm.field("content").query(text).boost(1.5f)));
+                            inner.minimumShouldMatch("1");
+                            return inner;
+                        }));
+                        // Les organisations Kernel pertinentes remontent en tête (boost additionnel)
+                        b.should(s -> s.term(t -> t.field("collection").value("organization").boost(10.0f)));
                     } else {
                         b.must(m -> m.matchAll(ma -> ma));
+                        b.should(s -> s.term(t -> t.field("collection").value("organization").boost(10.0f)));
                     }
                     return b;
                 }))
