@@ -71,6 +71,20 @@ yowyob:
       default-lon: ${GEO_DEFAULT_LON:9.7679}
       default-radius-km: ${GEO_DEFAULT_RADIUS_KM:10.0}
 
+# Sync Kernel → Elasticsearch (optionnel, désactivé par défaut).
+# Prérequis : le client doit avoir la permission READ_ORGANIZATIONS dans le Kernel.
+# Déclencher manuellement : POST /api/sync/organizations
+kernel:
+  sync:
+    enabled: ${KERNEL_SYNC_ENABLED:false}
+    kernel-base-url: ${KERNEL_BASE_URL:https://kernel-core.yowyob.com}
+    client-id: ${BACKEND_API_CLIENT_ID:yowyob-search}
+    api-key: ${BACKEND_API_KEY:}
+    kernel-tenant-id: ${BACKEND_API_TENANT_ID:11111111-1111-1111-1111-111111111111}
+    target-tenant-id: ${KERNEL_SYNC_TENANT_ID:${BACKEND_API_TENANT_ID:11111111-1111-1111-1111-111111111111}}
+    schedule-cron: ${KERNEL_SYNC_CRON:-}
+    page-size: ${KERNEL_SYNC_PAGE_SIZE:100}
+
 # Consumer Kafka : événements d'organisations publiés par le Kernel.
 # Activé seulement si KAFKA_ORG_ENABLED=true et KAFKA_ORG_TENANT_ID configuré.
 kafka:

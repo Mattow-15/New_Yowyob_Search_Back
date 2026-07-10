@@ -12,9 +12,12 @@ import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.stereotype.Component;
+import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
 import reactor.kafka.receiver.KafkaReceiver;
 import reactor.kafka.receiver.ReceiverOptions;
@@ -47,14 +50,21 @@ public class KafkaOrganizationConsumer {
     private static final Logger LOGGER = LoggerFactory.getLogger(KafkaOrganizationConsumer.class);
     private static final String COLLECTION = "organization";
     private static final TypeReference<Map<String, Object>> MAP_TYPE = new TypeReference<>() {};
+    private static final ParameterizedTypeReference<Map<String, Object>> PMAP_TYPE = new ParameterizedTypeReference<>() {};
 
     private final KafkaProperties properties;
     private final IndexService indexService;
+    private final WebClient webClient;
+    private final String kernelBaseUrl;
     private final ObjectMapper mapper = new ObjectMapper();
 
-    public KafkaOrganizationConsumer(KafkaProperties properties, IndexService indexService) {
+    public KafkaOrganizationConsumer(KafkaProperties properties, IndexService indexService,
+            WebClient.Builder builder,
+            @Value("${yowyob.search.auth.kernel-base-url:https://kernel-core.yowyob.com}") String kernelBaseUrl) {
         this.properties = properties;
         this.indexService = indexService;
+        this.kernelBaseUrl = kernelBaseUrl.replaceAll("/$", "");
+        this.webClient = builder.build();
     }
 
     @PostConstruct
@@ -140,17 +150,55 @@ public class KafkaOrganizationConsumer {
                     .then();
         }
 
-        // Ne pas indexer les orgs sans nom — elles pollueraient les résultats de recherche
-        Object name = data.get("name");
-        if (name == null || String.valueOf(name).isBlank()) {
-            LOGGER.debug("Org {} ignorée : pas de nom", id);
-            return Mono.empty();
-        }
+        // Enrichissement via l'endpoint public /branding du Kernel.
+        // Le payload Kafka ne contient pas toujours le nom — on le récupère ici.
+        return fetchBranding(id)
+                .map(branding -> enrichData(data, branding))
+                .defaultIfEmpty(data)
+                .flatMap(enriched -> {
+                    Object name = enriched.get("name");
+                    if (name == null || String.valueOf(name).isBlank()) {
+                        LOGGER.debug("Org {} ignorée : pas de nom même après enrichissement", id);
+                        return Mono.empty();
+                    }
+                    Map<String, Object> doc = toIndexDocument(enriched);
+                    return indexService.index(properties.tenantId(), COLLECTION, id, doc)
+                            .doOnSuccess(v -> LOGGER.info("Org indexée [{}] : {} ({})", eventType, enriched.get("name"), id))
+                            .then();
+                });
+    }
 
-        Map<String, Object> doc = toIndexDocument(data);
-        return indexService.index(properties.tenantId(), COLLECTION, id, doc)
-                .doOnSuccess(v -> LOGGER.info("Org indexée [{}] : {}", eventType, data.get("name")))
-                .then();
+    /** Appelle GET /api/public/organizations/{id}/branding pour récupérer nom et logo. */
+    private Mono<Map<String, Object>> fetchBranding(String id) {
+        String url = kernelBaseUrl + "/api/public/organizations/" + id
+                + "/branding?tenantId=" + properties.tenantId();
+        return webClient.get()
+                .uri(url)
+                .retrieve()
+                .bodyToMono(PMAP_TYPE)
+                .timeout(Duration.ofSeconds(5))
+                .onErrorResume(err -> {
+                    LOGGER.warn("fetchBranding({}) échoué : {}", id, err.getMessage());
+                    return Mono.empty();
+                });
+    }
+
+    /** Fusionne les données branding (name, logoUrl) dans le payload Kafka. */
+    private static Map<String, Object> enrichData(Map<String, Object> data, Map<String, Object> branding) {
+        Map<String, Object> enriched = new HashMap<>(data);
+        // name : priorité au payload Kafka s'il est déjà renseigné
+        if (!hasValue(enriched, "name") && hasValue(branding, "name")) {
+            enriched.put("name", branding.get("name"));
+        }
+        if (hasValue(branding, "logoUrl")) {
+            enriched.put("logoUrl", branding.get("logoUrl"));
+        }
+        return enriched;
+    }
+
+    private static boolean hasValue(Map<String, Object> map, String key) {
+        Object v = map.get(key);
+        return v != null && !String.valueOf(v).isBlank();
     }
 
     private Map<String, Object> toIndexDocument(Map<String, Object> data) {
