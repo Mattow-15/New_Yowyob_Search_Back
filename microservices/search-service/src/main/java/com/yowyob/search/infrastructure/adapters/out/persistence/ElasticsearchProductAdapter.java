@@ -60,6 +60,38 @@ public class ElasticsearchProductAdapter implements ProductSearchRepositoryPort 
     }
 
     @Override
+    public Flux<Product> findAllPaged(int page, int size) {
+        // match_all + pagination "from/size" classique. Pas de tri explicite : le
+        // score est constant (1.0) pour match_all, l'ordre suit donc l'ordre de
+        // segment/insertion — stable en pratique pour un index qui ne change pas
+        // pendant la génération d'un sitemap, ce qui est le seul usage visé ici.
+        Query pagedQuery = NativeQuery.builder()
+                .withQuery(q -> q.matchAll(m -> m))
+                .withPageable(org.springframework.data.domain.PageRequest.of(page, size))
+                .build();
+
+        return elasticsearchOperations.search(pagedQuery, ProductDocument.class)
+                .map(SearchHit::getContent)
+                .map(this::toDomain)
+                // Elasticsearch refuse from+size > index.max_result_window (10 000 par
+                // défaut) avec un search_phase_execution_exception — un client qui
+                // paginerait jusqu'au bout (ex: génération de sitemap) tomberait sur
+                // une 500 au lieu d'une simple liste vide signalant la fin. Testé en
+                // conditions réelles : page=9999&size=10 plante sans ce repli.
+                // Spring Data traduit l'exception ES brute en UncategorizedElasticsearchException
+                // (hiérarchie org.springframework.dao.DataAccessException) avant qu'elle
+                // n'atteigne ce point — c'est ce type-là qu'il faut intercepter, pas
+                // l'exception ES brute du client bas niveau (vérifié via les logs réels).
+                .onErrorResume(org.springframework.dao.DataAccessException.class,
+                        e -> Flux.empty());
+    }
+
+    @Override
+    public Mono<Long> count() {
+        return elasticsearchOperations.count(ProductDocument.class);
+    }
+
+    @Override
     public Flux<Product> findByTitleOrDescription(String query) {
         // match_phrase_prefix gère les requêtes multi-mots (ex: "je veux manger"),
         // contrairement à la dérivation "Containing" qui génère un wildcard *"..."*

@@ -175,6 +175,22 @@ public class SearchController {
         return Mono.just("Search Service OK — Architecture Hexagonale activée");
     }
 
+    // ── Listing paginé (sans mot-clé) ───────────────────────────────
+    // Sous /api/search/** pour hériter du permitAll() de la config sécurité,
+    // sans avoir à y toucher. Usage : génération d'un sitemap complet côté
+    // frontend (aucun autre endpoint ne permet d'énumérer tout l'index).
+
+    @GetMapping("/documents")
+    @Operation(summary = "Liste paginée de tous les documents indexés, sans recherche par mot-clé")
+    public Mono<SearchResponse> listDocuments(
+            @RequestParam(required = false, defaultValue = "0") Integer page,
+            @RequestParam(required = false, defaultValue = "100") Integer size) {
+        int safeSize = Math.min(Math.max(size, 1), 500); // cap pour éviter une charge excessive sur ES
+        int safePage = Math.max(page, 0);
+        return searchUseCase.listAllPaged(safePage, safeSize)
+                .map(this::toSearchResponse);
+    }
+
     // ── Mapping domain → DTO ──────────────────────────────────────
 
     private SearchResponse toSearchResponse(SearchQueryResult result) {

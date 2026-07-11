@@ -12,4 +12,6 @@ public interface SearchUseCase {
     Mono<List<String>> autocomplete(String query);
     Mono<Product> getProductById(String id);
     Mono<Product> indexProduct(Product product);
+    /** Listing paginé sans mot-clé — énumération complète de l'index (sitemap frontend). */
+    Mono<SearchQueryResult> listAllPaged(int page, int size);
 }

@@ -288,6 +288,23 @@ public class SearchApplicationService implements SearchUseCase, ManageSearchHist
     }
 
     @Override
+    public Mono<SearchQueryResult> listAllPaged(int page, int size) {
+        log.info("Listing all documents (paged): page={}, size={}", page, size);
+        return Mono.zip(
+                        productRepository.findAllPaged(page, size)
+                                .map(p -> new SearchResult(p, null))
+                                .collectList(),
+                        productRepository.count()
+                )
+                .map(tuple -> SearchQueryResult.builder()
+                        .success(true)
+                        .query(null)
+                        .total((int) Math.min(tuple.getT2(), Integer.MAX_VALUE))
+                        .results(tuple.getT1())
+                        .build());
+    }
+
+    @Override
     public Mono<Product> indexProduct(Product product) {
         if (product.getCity() != null && (product.getLatitude() == null || product.getLongitude() == null)) {
             return geoServiceClient.geocode(product.getCity())
